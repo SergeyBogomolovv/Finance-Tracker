@@ -9,19 +9,19 @@ build-job:
     - echo "Compiling the code..."
     - echo "Compile complete."
 
-unit-test-job:  
-  stage: test  
+unit-test-job:
+  stage: test
   script:
     - echo "Running unit tests... This will take about 60 seconds."
     - echo "Code coverage is 90%"
 
-lint-test-job:  
-  stage: test  
+lint-test-job:
+  stage: test
   script:
     - echo "Linting code... This will take about 10 seconds."
     - echo "No lint issues found."
 
-deploy-job:      
+deploy-job:
   stage: deploy
   environment: production
   script:
