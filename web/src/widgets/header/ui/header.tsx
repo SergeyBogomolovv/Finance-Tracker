@@ -1,4 +1,5 @@
 'use client'
+import { ProfileDropdown } from '@/features/profile'
 import {
   Navbar,
   NavbarBrand,
@@ -8,7 +9,7 @@ import {
   NavbarMenuItem,
   NavbarMenuToggle,
 } from '@heroui/navbar'
-import { Avatar, Button, Link } from '@heroui/react'
+import { Button, Link } from '@heroui/react'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 
@@ -49,13 +50,7 @@ export function Header({ isAuthenticated }: Props) {
 
       <NavbarContent justify='end'>
         {isAuthenticated ? (
-          <Link href='/profile' color='foreground' className='flex gap-2'>
-            <Avatar src='/icons/yandex_plus.png' />
-            <div className='flex-col gap-1.25 hidden sm:flex'>
-              <p className='text-sm font-medium leading-none'>Sergey Bogomolov</p>
-              <p className='text-xs leading-none text-muted'>bogomolovs693@gmail.com</p>
-            </div>
-          </Link>
+          <ProfileDropdown />
         ) : (
           <NavbarItem>
             <Button as={Link} color='primary' href='/login' variant='flat'>
