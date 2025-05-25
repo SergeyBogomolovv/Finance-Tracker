@@ -40,7 +40,8 @@ CREATE TABLE subscriptions (
     start_date DATE NOT NULL,
     next_payment_date DATE NOT NULL,
     last_payment_date DATE,
-    trial_end_date DATE
+    trial_end_date DATE,
+    subscription_type TEXT NOT NULL
 );
 
 CREATE TABLE expenses (
