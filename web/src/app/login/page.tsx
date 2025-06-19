@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { LoginForm, OAuthButton } from '@/features/auth'
+import { LoginForm, OAuthButtons } from '@/features/auth'
 
 export default function LoginPage() {
   return (
@@ -19,7 +19,7 @@ export default function LoginPage() {
         <div className='w-full max-w-md space-y-6 flex flex-col items-center'>
           <h2 className='text-2xl font-bold'>Вход</h2>
           <LoginForm />
-          <OAuthButton />
+          <OAuthButtons />
           <Link href='/register' className='text-sm hover:underline'>
             У вас еще нет аккаунта? Регистрация
           </Link>

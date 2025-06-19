@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "api/auth";
+
+package auth;
+
+service AuthService {
+  rpc ExchangeGoogleOAuth(OAuthRequest) returns (AuthResponse);
+  rpc ExchangeYandexOAuth(OAuthRequest) returns (AuthResponse);
+}
+
+message OAuthRequest {
+  string code = 1;
+}
+
+message AuthResponse {
+  string token = 1;
+}

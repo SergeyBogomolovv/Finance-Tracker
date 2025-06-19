@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { OAuthButton, RegisterForm } from '@/features/auth'
+import { OAuthButtons, RegisterForm } from '@/features/auth'
 
 export default function RegisterPage() {
   return (
@@ -26,7 +26,7 @@ export default function RegisterPage() {
         <div className='w-full max-w-md space-y-6 flex flex-col items-center'>
           <h2 className='text-2xl font-bold'>Регистрация</h2>
           <RegisterForm />
-          <OAuthButton />
+          <OAuthButtons />
           <Link href='/login' className='text-sm hover:underline'>
             Уже есть аккаунт? Вход
           </Link>
