@@ -3,6 +3,7 @@ package main
 import (
 	"FinanceTracker/auth/internal/config"
 	"FinanceTracker/auth/internal/controller"
+	"FinanceTracker/auth/internal/service"
 	"context"
 	"fmt"
 	"log/slog"
@@ -13,6 +14,7 @@ import (
 
 	pb "FinanceTracker/auth/pkg/api/auth"
 
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 )
 
@@ -23,18 +25,29 @@ func main() {
 	conf := config.New()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	oauthController := controller.NewOAuthController(conf.OAuthRedirectURL, conf.GoogleClientID, conf.GoogleClientSecret, conf.YandexClientID, conf.YandexClientSecret)
+	authService := service.NewAuthService(logger)
+
+	authController := controller.NewAuthController(
+		logger,
+		authService,
+		conf.OAuthRedirectURL,
+		conf.GoogleClientID,
+		conf.GoogleClientSecret,
+		conf.YandexClientID,
+		conf.YandexClientSecret,
+	)
 
 	server := grpc.NewServer()
-	pb.RegisterAuthServiceServer(server, oauthController)
+	pb.RegisterAuthServiceServer(server, authController)
 
-	logger.Info("server started", "addr", fmt.Sprintf("0.0.0.0:%d", conf.Port))
 	go func() {
-		lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", conf.Port))
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", conf.Port))
 		if err != nil {
 			logger.Error("failed to listen", "err", err)
 			os.Exit(1)
 		}
+		logger.Info("server started", "addr", lis.Addr())
+
 		if err := server.Serve(lis); err != nil {
 			logger.Error("failed to listen", "err", err)
 			os.Exit(1)
@@ -44,4 +57,8 @@ func main() {
 	<-ctx.Done()
 	server.GracefulStop()
 	logger.Info("server stopped")
+}
+
+func init() {
+	godotenv.Load()
 }

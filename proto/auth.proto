@@ -7,12 +7,27 @@ package auth;
 service AuthService {
   rpc ExchangeGoogleOAuth(OAuthRequest) returns (AuthResponse);
   rpc ExchangeYandexOAuth(OAuthRequest) returns (AuthResponse);
+  rpc SendEmailOTP(SendEmailOTPRequest) returns (SendEmailOTPResponse);
+  rpc VerifyEmailOTP(VerifyEmailOTPRequest) returns (AuthResponse);
 }
 
 message OAuthRequest {
   string code = 1;
 }
 
+message SendEmailOTPRequest {
+  string email = 1;
+}
+
+message SendEmailOTPResponse {
+}
+
+message VerifyEmailOTPRequest {
+  string otp = 1;
+  string email = 2;
+}
+
 message AuthResponse {
-  string token = 1;
+  string access_token = 1;
+  bool is_new_user = 2;
 }

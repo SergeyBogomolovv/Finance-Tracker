@@ -33,7 +33,13 @@ func main() {
 		log.Fatalf("failed to create grpc auth client: %v", err)
 	}
 	authService := pb.NewAuthServiceClient(authConn)
-	oauthController := controller.NewOAuthController(conf.OAuthRedirectURL, conf.ClientRedirectURL, conf.GoogleClientID, conf.YandexClientID, authService)
+	authController := controller.NewAuthController(
+		authService,
+		conf.OAuthRedirectURL,
+		conf.ClientRedirectURL,
+		conf.GoogleClientID,
+		conf.YandexClientID,
+	)
 
 	cors := middleware.NewCORS(middleware.CORSConfig{
 		AllowedOrigins:   conf.CorsOrigins,
@@ -43,7 +49,7 @@ func main() {
 	})
 
 	mux := http.NewServeMux()
-	oauthController.Init(mux)
+	authController.Init(mux)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%d", conf.Port),

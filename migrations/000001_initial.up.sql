@@ -4,16 +4,15 @@ CREATE TYPE sub_status AS ENUM('active', 'cancelled', 'trial', 'expired');
 CREATE TYPE notification_status AS ENUM('sent', 'failed');
 CREATE TYPE notification_type AS ENUM('payment_reminder', 'otp', '2fa', 'email_change', 'weekly_summary');
 CREATE TYPE task_status AS ENUM('pending', 'completed', 'failed');
+CREATE TYPE user_provider AS ENUM('yandex', 'google', 'email');
 
 CREATE TABLE users (
     user_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
-    password_hash BYTEA, -- если гугл - будет null
-    google_id TEXT UNIQUE, -- если только пароль - будет null
+    provider user_provider NOT NULL,
     is_email_verified BOOLEAN DEFAULT FALSE,
     avatar_url TEXT,
     full_name TEXT,
-    two_factor_enabled BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT now()
 );
 
