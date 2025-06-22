@@ -31,6 +31,7 @@ export default function Home() {
             width={500}
             height={500}
             className='w-full h-auto'
+            priority
           />
         </div>
       </section>
@@ -44,6 +45,7 @@ export default function Home() {
             width={500}
             height={500}
             className='w-full h-auto'
+            priority
           />
         </div>
         <div className='flex-1 space-y-4'>

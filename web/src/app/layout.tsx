@@ -38,7 +38,6 @@ export default async function RootLayout({
                 alt='Background'
                 fill
                 className='blur-sm brightness-60 object-center object-cover'
-                priority
               />
             </div>
             <Header isAuthenticated={isAuth} />

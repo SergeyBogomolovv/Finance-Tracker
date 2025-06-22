@@ -66,6 +66,7 @@ export function AuthForm() {
       <CardBody>
         <Form className='flex flex-col gap-4 items-center' onSubmit={handleSubmit}>
           <Input
+            isRequired
             label='Ваша почта'
             labelPlacement='outside'
             type='email'
