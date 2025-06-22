@@ -3,10 +3,13 @@ package config
 import (
 	"os"
 	"strconv"
+	"time"
 )
 
 type Config struct {
 	Port int
+
+	PostgresURL string
 
 	GoogleClientID     string
 	GoogleClientSecret string
@@ -15,6 +18,9 @@ type Config struct {
 	YandexClientSecret string
 
 	OAuthRedirectURL string
+
+	JwtSecret []byte
+	JwtTTL    time.Duration
 }
 
 func New() Config {
@@ -25,6 +31,9 @@ func New() Config {
 		YandexClientID:     env("YANDEX_CLIENT_ID"),
 		YandexClientSecret: env("YANDEX_CLIENT_SECRET"),
 		OAuthRedirectURL:   env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
+		PostgresURL:        env("POSTGRES_URL"),
+		JwtTTL:             envDuration("JWT_TTL", 24*time.Hour),
+		JwtSecret:          []byte(env("JWT_SECRET", "secret")),
 	}
 }
 
@@ -43,6 +52,19 @@ func envInt(key string, fallback ...int) int {
 		i, err := strconv.Atoi(value)
 		if err == nil {
 			return i
+		}
+	}
+	if len(fallback) == 0 {
+		return 0
+	}
+	return fallback[0]
+}
+
+func envDuration(key string, fallback ...time.Duration) time.Duration {
+	if value, ok := os.LookupEnv(key); ok {
+		d, err := time.ParseDuration(value)
+		if err == nil {
+			return d
 		}
 	}
 	if len(fallback) == 0 {

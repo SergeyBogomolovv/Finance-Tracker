@@ -3,6 +3,7 @@ package main
 import (
 	"FinanceTracker/auth/internal/config"
 	"FinanceTracker/auth/internal/controller"
+	"FinanceTracker/auth/internal/repo"
 	"FinanceTracker/auth/internal/service"
 	"context"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"syscall"
 
 	pb "FinanceTracker/auth/pkg/api/auth"
+	"FinanceTracker/auth/pkg/postgres"
 
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
@@ -25,7 +27,13 @@ func main() {
 	conf := config.New()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	authService := service.NewAuthService(logger)
+	postgres := postgres.MustNew(conf.PostgresURL)
+	defer postgres.Close()
+	logger.Info("postgres connected")
+
+	userRepo := repo.NewUserRepo(postgres)
+
+	authService := service.NewAuthService(logger, userRepo, conf.JwtTTL, conf.JwtSecret)
 
 	authController := controller.NewAuthController(
 		logger,

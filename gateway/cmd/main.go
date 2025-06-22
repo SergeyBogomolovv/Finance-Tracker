@@ -52,7 +52,7 @@ func main() {
 	authController.Init(mux)
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("0.0.0.0:%d", conf.Port),
+		Addr:    fmt.Sprintf(":%d", conf.Port),
 		Handler: cors(mux),
 	}
 
