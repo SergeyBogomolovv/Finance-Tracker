@@ -1,8 +1,11 @@
 'use client'
+import { logout } from '@/features/auth'
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/dropdown'
 import { User } from '@heroui/user'
+import { useRouter } from 'next/navigation'
 
 export function ProfileDropdown() {
+  const router = useRouter()
   return (
     <Dropdown>
       <DropdownTrigger>
@@ -20,7 +23,14 @@ export function ProfileDropdown() {
         <DropdownItem key='profile' href='/profile'>
           Профиль
         </DropdownItem>
-        <DropdownItem key='delete' className='text-danger' color='danger'>
+        <DropdownItem
+          key='delete'
+          className='text-danger'
+          color='danger'
+          onClick={() => {
+            logout().then(() => router.refresh())
+          }}
+        >
           Выйти
         </DropdownItem>
       </DropdownMenu>
