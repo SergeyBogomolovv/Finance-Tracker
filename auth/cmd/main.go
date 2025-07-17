@@ -1,42 +1,34 @@
 package main
 
 import (
+	"FinanceTracker/auth/internal/app"
 	"FinanceTracker/auth/internal/config"
 	"FinanceTracker/auth/internal/controller"
 	"FinanceTracker/auth/internal/repo"
 	"FinanceTracker/auth/internal/service"
 	"context"
-	"fmt"
-	"log/slog"
-	"net"
-	"os"
 	"os/signal"
 	"syscall"
 
-	pb "FinanceTracker/auth/pkg/api/auth"
+	log "FinanceTracker/auth/pkg/logger"
 	"FinanceTracker/auth/pkg/postgres"
 
 	"github.com/joho/godotenv"
-	"google.golang.org/grpc"
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer stop()
-
 	conf := config.New()
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logger := log.New(conf.Env)
 
 	postgres := postgres.MustNew(conf.PostgresURL)
 	defer postgres.Close()
 	logger.Info("postgres connected")
 
+	app := app.New(logger)
+
 	userRepo := repo.NewUserRepo(postgres)
-
-	authService := service.NewAuthService(logger, userRepo, conf.JwtTTL, conf.JwtSecret)
-
+	authService := service.NewAuthService(userRepo, conf.JwtTTL, conf.JwtSecret)
 	authController := controller.NewAuthController(
-		logger,
 		authService,
 		conf.OAuthRedirectURL,
 		conf.GoogleClientID,
@@ -45,26 +37,14 @@ func main() {
 		conf.YandexClientSecret,
 	)
 
-	server := grpc.NewServer()
-	pb.RegisterAuthServiceServer(server, authController)
+	app.Register(authController)
 
-	go func() {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", conf.Port))
-		if err != nil {
-			logger.Error("failed to listen", "err", err)
-			os.Exit(1)
-		}
-		logger.Info("server started", "addr", lis.Addr())
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
 
-		if err := server.Serve(lis); err != nil {
-			logger.Error("failed to listen", "err", err)
-			os.Exit(1)
-		}
-	}()
-
+	app.Start(conf.Port)
 	<-ctx.Done()
-	server.GracefulStop()
-	logger.Info("server stopped")
+	app.Stop()
 }
 
 func init() {

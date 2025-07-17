@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	Port int
+	Env  string
 
 	PostgresURL string
 
@@ -26,6 +27,7 @@ type Config struct {
 func New() Config {
 	return Config{
 		Port:               envInt("PORT", 50051),
+		Env:                env("ENV", "development"),
 		GoogleClientID:     env("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: env("GOOGLE_CLIENT_SECRET"),
 		YandexClientID:     env("YANDEX_CLIENT_ID"),

@@ -3,15 +3,16 @@ package controller
 import (
 	"FinanceTracker/auth/internal/dto"
 	pb "FinanceTracker/auth/pkg/api/auth"
+	"FinanceTracker/auth/pkg/logger"
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/yandex"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -22,14 +23,12 @@ type AuthService interface {
 
 type authController struct {
 	pb.UnimplementedAuthServiceServer
-	logger       *slog.Logger
 	googleConfig *oauth2.Config
 	yandexConfig *oauth2.Config
 	authService  AuthService
 }
 
 func NewAuthController(
-	logger *slog.Logger,
 	authService AuthService,
 	oauthRedirectURL string,
 	googleClientID string,
@@ -51,9 +50,12 @@ func NewAuthController(
 			RedirectURL:  fmt.Sprintf("%s/auth/yandex/callback", oauthRedirectURL),
 			Endpoint:     yandex.Endpoint,
 		},
-		logger:      logger.With(slog.String("layer", "controller")),
 		authService: authService,
 	}
+}
+
+func (c *authController) Register(server *grpc.Server) {
+	pb.RegisterAuthServiceServer(server, c)
 }
 
 type GooglePayload struct {
@@ -65,14 +67,14 @@ type GooglePayload struct {
 func (c *authController) ExchangeGoogleOAuth(ctx context.Context, req *pb.OAuthRequest) (*pb.AuthResponse, error) {
 	token, err := c.googleConfig.Exchange(ctx, req.Code)
 	if err != nil {
-		c.logger.Error("failed to exchange token", "err", err)
+		logger.Error(ctx, "failed to exchange token", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to exchange token")
 	}
 
 	client := c.googleConfig.Client(ctx, token)
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil || resp.StatusCode != http.StatusOK {
-		c.logger.Error("failed to get user info", "err", err)
+		logger.Error(ctx, "failed to get user info", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to get user info")
 	}
 	defer resp.Body.Close()
@@ -87,7 +89,7 @@ func (c *authController) ExchangeGoogleOAuth(ctx context.Context, req *pb.OAuthR
 		Provider:  dto.OAuthProviderGoogle,
 	})
 	if err != nil {
-		c.logger.Error("failed to oauth user", "err", err)
+		logger.Error(ctx, "failed to oauth user", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to oauth user")
 	}
 
@@ -104,14 +106,14 @@ type YandexPayload struct {
 func (c *authController) ExchangeYandexOAuth(ctx context.Context, req *pb.OAuthRequest) (*pb.AuthResponse, error) {
 	token, err := c.yandexConfig.Exchange(ctx, req.Code)
 	if err != nil {
-		c.logger.Error("failed to exchange token", "err", err)
+		logger.Error(ctx, "failed to exchange token", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to exchange token")
 	}
 
 	client := c.yandexConfig.Client(ctx, token)
 	resp, err := client.Get("https://login.yandex.ru/info")
 	if err != nil || resp.StatusCode != http.StatusOK {
-		c.logger.Error("failed to get user info", "err", err)
+		logger.Error(ctx, "failed to get user info", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to get user info")
 	}
 	defer resp.Body.Close()
@@ -126,7 +128,7 @@ func (c *authController) ExchangeYandexOAuth(ctx context.Context, req *pb.OAuthR
 		Provider:  dto.OAuthProviderYandex,
 	})
 	if err != nil {
-		c.logger.Error("failed to oauth user", "err", err)
+		logger.Error(ctx, "failed to oauth user", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to oauth user")
 	}
 

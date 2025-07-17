@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	pb "FinanceTracker/gateway/pkg/api/auth"
+	"FinanceTracker/gateway/pkg/logger"
 	"FinanceTracker/gateway/pkg/utils"
 
 	"github.com/go-playground/validator/v10"
@@ -67,7 +68,9 @@ func (c *authController) handleGoogleLogin(w http.ResponseWriter, r *http.Reques
 }
 
 func (c *authController) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if !checkState(r) {
+		logger.Debug(ctx, "invalid state")
 		http.Redirect(w, r, c.clientRedirectAddr+"?error=invalid_state", http.StatusTemporaryRedirect)
 		return
 	}
@@ -75,7 +78,7 @@ func (c *authController) handleGoogleCallback(w http.ResponseWriter, r *http.Req
 	code := r.URL.Query().Get("code")
 	resp, err := c.authService.ExchangeGoogleOAuth(r.Context(), &pb.OAuthRequest{Code: code})
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(ctx, "failed to exchange google oauth", err)
 		http.Redirect(w, r, c.clientRedirectAddr+"?error=oauth_failed", http.StatusTemporaryRedirect)
 		return
 	}
@@ -92,7 +95,9 @@ func (c *authController) handleYandexLogin(w http.ResponseWriter, r *http.Reques
 }
 
 func (c *authController) handleYandexCallback(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if !checkState(r) {
+		logger.Debug(ctx, "invalid state")
 		http.Redirect(w, r, c.clientRedirectAddr+"?error=invalid_state", http.StatusTemporaryRedirect)
 		return
 	}
@@ -100,6 +105,7 @@ func (c *authController) handleYandexCallback(w http.ResponseWriter, r *http.Req
 	code := r.URL.Query().Get("code")
 	resp, err := c.authService.ExchangeYandexOAuth(r.Context(), &pb.OAuthRequest{Code: code})
 	if err != nil {
+		logger.Error(ctx, "failed to exchange yandex oauth", err)
 		http.Redirect(w, r, c.clientRedirectAddr+"?error=oauth_failed", http.StatusTemporaryRedirect)
 		return
 	}
@@ -113,19 +119,23 @@ type EmailAuthRequest struct {
 }
 
 func (c *authController) handleEmailAuth(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req EmailAuthRequest
 	if err := utils.DecodeBody(r, &req); err != nil {
+		logger.Error(ctx, "failed to decode body", err)
 		utils.WriteError(w, "invalid body", http.StatusBadRequest)
 		return
 	}
 
 	if err := c.validate.Struct(req); err != nil {
+		logger.Debug(ctx, "invalid request", err)
 		utils.WriteValidationError(w, err)
 		return
 	}
 
 	_, err := c.authService.SendEmailOTP(r.Context(), &pb.SendEmailOTPRequest{Email: req.Email})
 	if err != nil {
+		logger.Error(ctx, "failed to send email", err)
 		utils.WriteError(w, "failed to send email", http.StatusInternalServerError)
 		return
 	}
@@ -139,13 +149,16 @@ type VerifyEmailRequest struct {
 }
 
 func (c *authController) handleVerifyEmailOTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req VerifyEmailRequest
 	if err := utils.DecodeBody(r, &req); err != nil {
+		logger.Error(ctx, "failed to decode body", err)
 		utils.WriteError(w, "invalid body", http.StatusBadRequest)
 		return
 	}
 
 	if err := c.validate.Struct(req); err != nil {
+		logger.Debug(ctx, "invalid request", err)
 		utils.WriteValidationError(w, err)
 		return
 	}
@@ -155,10 +168,13 @@ func (c *authController) handleVerifyEmailOTP(w http.ResponseWriter, r *http.Req
 		if e, ok := status.FromError(err); ok {
 			switch e.Code() {
 			case codes.InvalidArgument:
+				logger.Debug(ctx, "invalid email or otp", err)
 				utils.WriteError(w, "invalid email or otp", http.StatusBadRequest)
 				return
 			}
 		}
+
+		logger.Error(ctx, "failed to verify email", err)
 		utils.WriteError(w, "failed to verify email", http.StatusInternalServerError)
 		return
 	}

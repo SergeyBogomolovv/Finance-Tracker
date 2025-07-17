@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 
@@ -19,15 +18,13 @@ type UserRepo interface {
 }
 
 type authService struct {
-	logger *slog.Logger
 	users  UserRepo
 	jwtTTL time.Duration
 	jwtKey []byte
 }
 
-func NewAuthService(logger *slog.Logger, users UserRepo, jwtTTL time.Duration, jwtKey []byte) *authService {
+func NewAuthService(users UserRepo, jwtTTL time.Duration, jwtKey []byte) *authService {
 	return &authService{
-		logger: logger.With(slog.String("layer", "service")),
 		users:  users,
 		jwtTTL: jwtTTL,
 		jwtKey: jwtKey,
