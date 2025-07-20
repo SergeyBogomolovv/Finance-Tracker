@@ -10,16 +10,27 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	_ "FinanceTracker/gateway/docs"
+
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type app struct {
 	srv    *http.Server
 	logger *slog.Logger
-	mux    *http.ServeMux
 }
 
-func New(log *slog.Logger, conf config.Config) *app {
+type Controller interface {
+	Init(r *http.ServeMux)
+}
+
+func New(log *slog.Logger, conf config.Config, controllers ...Controller) *app {
 	mux := http.NewServeMux()
+	mux.Handle("/swagger/", httpSwagger.WrapHandler)
+	for _, c := range controllers {
+		c.Init(mux)
+	}
 
 	corsMiddleware := middleware.NewCORS(middleware.CORSConfig{
 		AllowedOrigins:   conf.CorsOrigins,
@@ -30,24 +41,13 @@ func New(log *slog.Logger, conf config.Config) *app {
 	loggerMiddleware := logger.NewHttpMiddleware(log)
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", conf.Port),
+		Addr:    fmt.Sprintf("%s:%d", conf.Host, conf.Port),
 		Handler: loggerMiddleware(corsMiddleware(mux)),
 	}
 
 	return &app{
 		logger: log,
 		srv:    srv,
-		mux:    mux,
-	}
-}
-
-type Controller interface {
-	Init(r *http.ServeMux)
-}
-
-func (a *app) Init(controller ...Controller) {
-	for _, c := range controller {
-		c.Init(a.mux)
 	}
 }
 

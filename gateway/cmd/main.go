@@ -11,32 +11,27 @@ import (
 	"syscall"
 
 	pb "FinanceTracker/gateway/pkg/api/auth"
+	"FinanceTracker/gateway/pkg/logger"
 
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// @title           FinanceTracker Gateway API
+// @version         1.0
+// @description     Документация HTTP API
 func main() {
 	conf := config.New()
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logger := logger.New(conf.Env)
 
 	authConn, err := grpc.NewClient(conf.AuthServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		logger.Error("failed to create grpc auth client", "err", err)
-		os.Exit(1)
-	}
-	authService := pb.NewAuthServiceClient(authConn)
-	authController := controller.NewAuthController(
-		authService,
-		conf.OAuthRedirectURL,
-		conf.ClientRedirectURL,
-		conf.GoogleClientID,
-		conf.YandexClientID,
-	)
+	exitIfError(logger, err, "failed to create grpc auth client")
 
-	app := app.New(logger, conf)
-	app.Init(authController)
+	authService := pb.NewAuthServiceClient(authConn)
+	authController := controller.NewAuthController(authService, conf.OAuth)
+
+	app := app.New(logger, conf, authController)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
@@ -48,4 +43,11 @@ func main() {
 
 func init() {
 	godotenv.Load()
+}
+
+func exitIfError(logger *slog.Logger, err error, msg string) {
+	if err != nil {
+		logger.Error(msg, "err", err)
+		os.Exit(1)
+	}
 }

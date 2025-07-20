@@ -7,24 +7,34 @@ import (
 )
 
 type Config struct {
-	Port              int
-	OAuthRedirectURL  string
+	Port            int
+	Host            string
+	Env             string
+	OAuth           OAuth
+	AuthServiceAddr string
+	CorsOrigins     []string
+}
+
+type OAuth struct {
 	GoogleClientID    string
 	YandexClientID    string
-	ClientRedirectURL string
-	AuthServiceAddr   string
-	CorsOrigins       []string
+	RedirectURL       string // backend redirect url
+	ClientRedirectURL string // redirect to browser with cookie
 }
 
 func New() Config {
 	return Config{
-		Port:              envInt("PORT", 8080),
-		OAuthRedirectURL:  env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
-		GoogleClientID:    env("GOOGLE_CLIENT_ID"),
-		YandexClientID:    env("YANDEX_CLIENT_ID"),
-		ClientRedirectURL: env("CLIENT_REDIRECT_URL", "http://localhost:3000"),
-		AuthServiceAddr:   env("AUTH_SERVICE_ADDR", "localhost:50051"),
-		CorsOrigins:       strings.Split(env("CORS_ORIGINS", "http://localhost:3000"), ","),
+		Port: envInt("PORT", 8080),
+		Host: env("HOST", "localhost"),
+		Env:  env("ENV", "development"),
+		OAuth: OAuth{
+			RedirectURL:       env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
+			GoogleClientID:    env("GOOGLE_CLIENT_ID"),
+			YandexClientID:    env("YANDEX_CLIENT_ID"),
+			ClientRedirectURL: env("CLIENT_REDIRECT_URL", "http://localhost:3000"),
+		},
+		AuthServiceAddr: env("AUTH_SERVICE_ADDR", "localhost:50051"),
+		CorsOrigins:     strings.Split(env("CORS_ORIGINS", "http://localhost:3000"), ","),
 	}
 }
 

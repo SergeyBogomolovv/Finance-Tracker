@@ -1,0 +1,168 @@
+definitions:
+  controller.EmailAuthRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  controller.VerifyEmailRequest:
+    properties:
+      email:
+        type: string
+      otp:
+        type: string
+    required:
+    - email
+    - otp
+    type: object
+  utils.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  utils.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  utils.ValidationErrorResponse:
+    properties:
+      fields:
+        additionalProperties:
+          type: string
+        type: object
+      message:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Документация HTTP API
+  title: FinanceTracker Gateway API
+  version: "1.0"
+paths:
+  /auth/email:
+    post:
+      consumes:
+      - application/json
+      description: Отправляет одноразовый код на email
+      parameters:
+      - description: Email для отправки OTP
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.EmailAuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Email sent
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/utils.ValidationErrorResponse'
+        "500":
+          description: Сбой при отправке
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Запросить код на email
+      tags:
+      - auth
+  /auth/email/verify:
+    post:
+      consumes:
+      - application/json
+      description: Подтверждает OTP-код и возвращает access token
+      parameters:
+      - description: Email и OTP-код
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Email verified or login successful
+          schema:
+            $ref: '#/definitions/utils.MessageResponse'
+        "400":
+          description: Неверные данные или код
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Подтверждение email-кода
+      tags:
+      - auth
+  /auth/google/callback:
+    get:
+      description: Обрабатывает redirect от Google и выдает access token
+      parameters:
+      - description: Authorization Code
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect with error
+          schema:
+            type: string
+      summary: Callback Google OAuth
+      tags:
+      - auth
+  /auth/google/login:
+    get:
+      description: Перенаправляет пользователя на Google OAuth страницу
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to Google OAuth
+          schema:
+            type: string
+      summary: Google OAuth вход
+      tags:
+      - auth
+  /auth/yandex/callback:
+    get:
+      description: Обрабатывает redirect от Yandex и выдает access token
+      parameters:
+      - description: Authorization Code
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect with error
+          schema:
+            type: string
+      summary: Callback Yandex OAuth
+      tags:
+      - auth
+  /auth/yandex/login:
+    get:
+      description: Перенаправляет пользователя на Yandex OAuth страницу
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to Yandex OAuth
+          schema:
+            type: string
+      summary: Yandex OAuth вход
+      tags:
+      - auth
+swagger: "2.0"
