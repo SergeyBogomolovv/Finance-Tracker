@@ -8,34 +8,40 @@ import (
 
 type Config struct {
 	Port int
+	Host string
 	Env  string
 
 	PostgresURL string
 
-	GoogleClientID     string
-	GoogleClientSecret string
-
-	YandexClientID     string
-	YandexClientSecret string
-
-	OAuthRedirectURL string
+	OAuth OAuth
 
 	JwtSecret []byte
 	JwtTTL    time.Duration
 }
 
+type OAuth struct {
+	RedirectURL        string
+	GoogleClientID     string
+	GoogleClientSecret string
+	YandexClientID     string
+	YandexClientSecret string
+}
+
 func New() Config {
 	return Config{
-		Port:               envInt("PORT", 50051),
-		Env:                env("ENV", "development"),
-		GoogleClientID:     env("GOOGLE_CLIENT_ID"),
-		GoogleClientSecret: env("GOOGLE_CLIENT_SECRET"),
-		YandexClientID:     env("YANDEX_CLIENT_ID"),
-		YandexClientSecret: env("YANDEX_CLIENT_SECRET"),
-		OAuthRedirectURL:   env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
-		PostgresURL:        env("POSTGRES_URL"),
-		JwtTTL:             envDuration("JWT_TTL", 24*time.Hour),
-		JwtSecret:          []byte(env("JWT_SECRET", "secret")),
+		Port: envInt("PORT", 50051),
+		Host: env("HOST", "localhost"),
+		Env:  env("ENV", "development"),
+		OAuth: OAuth{
+			RedirectURL:        env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
+			GoogleClientID:     env("GOOGLE_CLIENT_ID"),
+			GoogleClientSecret: env("GOOGLE_CLIENT_SECRET"),
+			YandexClientID:     env("YANDEX_CLIENT_ID"),
+			YandexClientSecret: env("YANDEX_CLIENT_SECRET"),
+		},
+		PostgresURL: env("POSTGRES_URL"),
+		JwtTTL:      envDuration("JWT_TTL", 24*time.Hour),
+		JwtSecret:   []byte(env("JWT_SECRET", "secret")),
 	}
 }
 

@@ -24,25 +24,16 @@ func main() {
 	defer postgres.Close()
 	logger.Info("postgres connected")
 
-	app := app.New(logger)
-
 	userRepo := repo.NewUserRepo(postgres)
 	authService := service.NewAuthService(userRepo, conf.JwtTTL, conf.JwtSecret)
-	authController := controller.NewAuthController(
-		authService,
-		conf.OAuthRedirectURL,
-		conf.GoogleClientID,
-		conf.GoogleClientSecret,
-		conf.YandexClientID,
-		conf.YandexClientSecret,
-	)
+	authController := controller.NewAuthController(authService, conf.OAuth)
 
-	app.Register(authController)
+	app := app.New(logger, authController)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	app.Start(conf.Port)
+	app.Start(conf.Host, conf.Port)
 	<-ctx.Done()
 	app.Stop()
 }

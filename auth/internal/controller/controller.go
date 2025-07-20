@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"FinanceTracker/auth/internal/config"
 	"FinanceTracker/auth/internal/dto"
 	pb "FinanceTracker/auth/pkg/api/auth"
 	"FinanceTracker/auth/pkg/logger"
@@ -28,26 +29,19 @@ type authController struct {
 	authService  AuthService
 }
 
-func NewAuthController(
-	authService AuthService,
-	oauthRedirectURL string,
-	googleClientID string,
-	googleClientSecret string,
-	yandexClientID string,
-	yandexClientSecret string,
-) *authController {
+func NewAuthController(authService AuthService, oauthConf config.OAuth) *authController {
 	return &authController{
 		googleConfig: &oauth2.Config{
-			ClientID:     googleClientID,
-			ClientSecret: googleClientSecret,
-			RedirectURL:  fmt.Sprintf("%s/auth/google/callback", oauthRedirectURL),
+			ClientID:     oauthConf.GoogleClientID,
+			ClientSecret: oauthConf.GoogleClientSecret,
+			RedirectURL:  fmt.Sprintf("%s/auth/google/callback", oauthConf.RedirectURL),
 			Endpoint:     google.Endpoint,
 			Scopes:       []string{"email", "profile", "openid"},
 		},
 		yandexConfig: &oauth2.Config{
-			ClientID:     yandexClientID,
-			ClientSecret: yandexClientSecret,
-			RedirectURL:  fmt.Sprintf("%s/auth/yandex/callback", oauthRedirectURL),
+			ClientID:     oauthConf.YandexClientID,
+			ClientSecret: oauthConf.YandexClientSecret,
+			RedirectURL:  fmt.Sprintf("%s/auth/yandex/callback", oauthConf.RedirectURL),
 			Endpoint:     yandex.Endpoint,
 		},
 		authService: authService,

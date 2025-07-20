@@ -16,41 +16,40 @@ type app struct {
 	srv    *grpc.Server
 }
 
-func New(logger *slog.Logger) *app {
-	server := grpc.NewServer(
-		grpc.UnaryInterceptor(log.UnaryInterceptor(logger)),
-	)
-	return &app{logger: logger, srv: server}
-}
-
 type Controller interface {
 	Register(server *grpc.Server)
 }
 
-func (a *app) Register(controller ...Controller) {
-	for _, c := range controller {
-		c.Register(a.srv)
+func New(logger *slog.Logger, controllers ...Controller) *app {
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(log.UnaryInterceptor(logger)),
+	)
+
+	for _, c := range controllers {
+		c.Register(server)
 	}
-	a.logger.Info("controllers registered")
+
+	return &app{logger: logger, srv: server}
 }
 
-func (a *app) Start(port int) {
+func (a *app) Start(host string, port int) {
 	go func() {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-		if err != nil {
-			a.logger.Error("failed to listen", "err", err)
-			os.Exit(1)
-		}
+		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
+		exitIfErr(a.logger, err, "failed to listen")
 		a.logger.Info("server started", "addr", lis.Addr())
-
-		if err := a.srv.Serve(lis); err != nil {
-			a.logger.Error("failed to listen", "err", err)
-			os.Exit(1)
-		}
+		err = a.srv.Serve(lis)
+		exitIfErr(a.logger, err, "failed to serve")
 	}()
 }
 
 func (a *app) Stop() {
 	a.srv.GracefulStop()
 	a.logger.Info("server stopped")
+}
+
+func exitIfErr(logger *slog.Logger, err error, msg string) {
+	if err != nil {
+		logger.Error(msg, "err", err)
+		os.Exit(1)
+	}
 }
