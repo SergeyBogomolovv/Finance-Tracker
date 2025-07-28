@@ -4,6 +4,7 @@ import (
 	"FinanceTracker/auth/internal/app"
 	"FinanceTracker/auth/internal/config"
 	"FinanceTracker/auth/internal/controller"
+	"FinanceTracker/auth/internal/producer"
 	"FinanceTracker/auth/internal/repo"
 	"FinanceTracker/auth/internal/service"
 	"context"
@@ -25,7 +26,8 @@ func main() {
 	logger.Info("postgres connected")
 
 	userRepo := repo.NewUserRepo(postgres)
-	authService := service.NewAuthService(userRepo, conf.JwtTTL, conf.JwtSecret)
+	producer := producer.New(conf.KafkaBrokers)
+	authService := service.NewAuthService(userRepo, producer, conf.JwtTTL, conf.JwtSecret)
 	authController := controller.NewAuthController(authService, conf.OAuth)
 
 	app := app.New(logger, authController)
@@ -36,6 +38,7 @@ func main() {
 	app.Start(conf.Host, conf.Port)
 	<-ctx.Done()
 	app.Stop()
+	producer.Close()
 }
 
 func init() {

@@ -6,12 +6,10 @@ import (
 	"FinanceTracker/notification/internal/mailer"
 	"FinanceTracker/notification/internal/repo"
 	"FinanceTracker/notification/internal/service"
-	"FinanceTracker/notification/pkg/events"
+	"FinanceTracker/notification/pkg/logger"
 	"FinanceTracker/notification/pkg/postgres"
 
 	"context"
-	"log/slog"
-	"os"
 	"os/signal"
 	"syscall"
 
@@ -19,32 +17,26 @@ import (
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer stop()
-
 	conf := config.New()
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	log := logger.New(conf.Env)
 
 	postgres := postgres.MustNew(conf.PostgresURL)
 	defer postgres.Close()
-	logger.Info("postgres connected")
+	log.Info("postgres connected")
 
 	mailer := mailer.New(conf.SMTP)
 	userRepo := repo.NewUserRepo(postgres)
+	notificationService := service.NewNotificationService(userRepo, mailer)
+	consumer := consumer.New(conf.KafkaBrokers, conf.KafkaGroupID, notificationService)
 
-	notificationService := service.NewNotificationService(logger, userRepo, mailer)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
 
-	consumer := consumer.MustNew(logger, conf.KafkaBrokers, notificationService)
-	consumer.ConsumeTopic(ctx, events.AuthOTPGeneratedTopic)
-
-	logger.Info("service started")
+	loggerCtx := logger.WithLogger(ctx, log)
+	consumer.Start(loggerCtx)
+	log.Info("consumer started")
 	<-ctx.Done()
-
-	if err := consumer.Close(); err != nil {
-		logger.Error("failed to close consumer", "err", err)
-		os.Exit(1)
-	}
-	logger.Info("service stopped")
+	consumer.Stop()
 }
 
 func init() {

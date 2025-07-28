@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -10,6 +11,8 @@ type Config struct {
 	Port int
 	Host string
 	Env  string
+
+	KafkaBrokers []string
 
 	PostgresURL string
 
@@ -29,9 +32,10 @@ type OAuth struct {
 
 func New() Config {
 	return Config{
-		Port: envInt("PORT", 50051),
-		Host: env("HOST", "localhost"),
-		Env:  env("ENV", "development"),
+		Port:         envInt("PORT", 50051),
+		Host:         env("HOST", "localhost"),
+		Env:          env("ENV", "development"),
+		KafkaBrokers: envArray("KAFKA_BROKERS", "localhost:9092"),
 		OAuth: OAuth{
 			RedirectURL:        env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
 			GoogleClientID:     env("GOOGLE_CLIENT_ID"),
@@ -79,4 +83,14 @@ func envDuration(key string, fallback ...time.Duration) time.Duration {
 		return 0
 	}
 	return fallback[0]
+}
+
+func envArray(key string, fallback ...string) []string {
+	if value, ok := os.LookupEnv(key); ok {
+		return strings.Split(value, ",")
+	}
+	if len(fallback) == 0 {
+		return []string{}
+	}
+	return fallback
 }

@@ -17,17 +17,24 @@ type UserRepo interface {
 	Create(ctx context.Context, user domain.User) (domain.User, error)
 }
 
-type authService struct {
-	users  UserRepo
-	jwtTTL time.Duration
-	jwtKey []byte
+type Producer interface {
+	PublishUserRegistered(ctx context.Context, userID int) error
+	PublishOTPGenerated(ctx context.Context, userID int, code string) error
 }
 
-func NewAuthService(users UserRepo, jwtTTL time.Duration, jwtKey []byte) *authService {
+type authService struct {
+	users    UserRepo
+	producer Producer
+	jwtTTL   time.Duration
+	jwtKey   []byte
+}
+
+func NewAuthService(users UserRepo, producer Producer, jwtTTL time.Duration, jwtKey []byte) *authService {
 	return &authService{
-		users:  users,
-		jwtTTL: jwtTTL,
-		jwtKey: jwtKey,
+		producer: producer,
+		users:    users,
+		jwtTTL:   jwtTTL,
+		jwtKey:   jwtKey,
 	}
 }
 
@@ -35,6 +42,7 @@ func (s *authService) OAuth(ctx context.Context, payload dto.OAuthPayload) (stri
 	user, err := s.users.GetByEmail(ctx, payload.Email)
 
 	if errors.Is(err, domain.ErrUserNotFound) {
+		// TODO: ОБЕРНУТЬ В ТРАНЗАКЦИЮ И ВЫНЕСТИ В ОТДЕЛЬНЫЙ МЕТОД РЕГИСТРАЦИИ
 		user, err = s.users.Create(ctx, domain.User{
 			Email:           payload.Email,
 			FullName:        payload.FullName,
@@ -49,8 +57,9 @@ func (s *authService) OAuth(ctx context.Context, payload dto.OAuthPayload) (stri
 		if err != nil {
 			return "", fmt.Errorf("failed to sign token: %w", err)
 		}
-
-		// TODO: отправить письмо о регистрации
+		if err := s.producer.PublishUserRegistered(ctx, user.ID); err != nil {
+			return "", fmt.Errorf("failed to publish user registered event: %w", err)
+		}
 		return token, nil
 	}
 

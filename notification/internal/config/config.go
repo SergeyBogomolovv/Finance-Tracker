@@ -7,10 +7,13 @@ import (
 )
 
 type Config struct {
-	Port         int
+	Env string
+
+	KafkaGroupID string
 	KafkaBrokers []string
-	SMTP         SMTP
-	PostgresURL  string
+
+	SMTP        SMTP
+	PostgresURL string
 }
 
 type SMTP struct {
@@ -22,7 +25,8 @@ type SMTP struct {
 
 func New() *Config {
 	return &Config{
-		Port:         envInt("PORT", 8080),
+		Env:          env("ENV", "development"),
+		KafkaGroupID: env("KAFKA_GROUP_ID", "notification-service"),
 		KafkaBrokers: envArray("KAFKA_BROKERS", "localhost:9092"),
 		PostgresURL:  env("POSTGRES_URL"),
 		SMTP: SMTP{
