@@ -33,8 +33,12 @@ func (s *notificationService) SendOTP(ctx context.Context, userID int, code stri
 		return fmt.Errorf("failed to get user email: %w", err)
 	}
 
-	logger.Debug(ctx, "sending otp email", "email", email)
-	return s.mailer.SendOTPEmail(email, code)
+	if err := s.mailer.SendOTPEmail(email, code); err != nil {
+		return err
+	}
+
+	logger.Debug(ctx, "otp email sent", "email", email)
+	return nil
 }
 
 func (s *notificationService) SendRegistered(ctx context.Context, userID int) error {
@@ -43,5 +47,10 @@ func (s *notificationService) SendRegistered(ctx context.Context, userID int) er
 		return fmt.Errorf("failed to get user email: %w", err)
 	}
 
-	return s.mailer.SendRegistrationEmail(email)
+	if err := s.mailer.SendRegistrationEmail(email); err != nil {
+		return err
+	}
+
+	logger.Debug(ctx, "registration email sent", "email", email)
+	return nil
 }

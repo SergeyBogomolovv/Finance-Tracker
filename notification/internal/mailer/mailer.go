@@ -4,30 +4,10 @@ import (
 	"FinanceTracker/notification/internal/config"
 	"bytes"
 	"fmt"
-	"text/template"
+	"html/template"
 
 	"gopkg.in/gomail.v2"
 )
-
-const otpTemplate = `
-Здравствуйте!
-
-Ваш OTP-код для входа в аккаунт: {{.OTP}}
-
-Спасибо,
-Команда FinanceTracker
-`
-
-const registrationTemplate = `
-Здравствуйте!
-
-Вы успешно зарегистрировались в FinanceTracker.
-
-Добро пожаловать!
-
-Спасибо,
-Команда FinanceTracker
-`
 
 type mailer struct {
 	conf config.SMTP
@@ -37,46 +17,55 @@ func New(conf config.SMTP) *mailer {
 	return &mailer{conf: conf}
 }
 
-func (m *mailer) SendEmail(to, subject, body string) error {
+func (m *mailer) SendOTPEmail(to string, otp string) error {
 	mail := gomail.NewMessage()
 	mail.SetHeader("From", m.conf.User)
 	mail.SetHeader("To", to)
-	mail.SetHeader("Subject", subject)
-	mail.SetBody("text/plain", body)
+	mail.SetHeader("Subject", "Код для входа в Finance Tracker")
+
+	tmpl, err := template.ParseFiles("templates/otp.html")
+	if err != nil {
+		return fmt.Errorf("failed to parse email template: %w", err)
+	}
+
+	var body bytes.Buffer
+	err = tmpl.Execute(&body, map[string]string{"OTP": otp})
+	if err != nil {
+		return fmt.Errorf("failed to execute email template: %w", err)
+	}
+
+	mail.SetBody("text/html", body.String())
 
 	d := gomail.NewDialer(m.conf.Host, m.conf.Port, m.conf.User, m.conf.Pass)
 	if err := d.DialAndSend(mail); err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
+		return fmt.Errorf("failed to send otp email: %w", err)
 	}
+
 	return nil
 }
 
-func (m *mailer) SendOTPEmail(to string, otp string) error {
-	body, err := m.generateBody(otpTemplate, map[string]string{
-		"OTP": otp,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to generate email body: %w", err)
-	}
-	return m.SendEmail(to, "Ваш OTP-код", body)
-}
-
 func (m *mailer) SendRegistrationEmail(to string) error {
-	body, err := m.generateBody(registrationTemplate, nil)
-	if err != nil {
-		return fmt.Errorf("failed to generate email body: %w", err)
-	}
-	return m.SendEmail(to, "Регистрация прошла успешно", body)
-}
+	mail := gomail.NewMessage()
+	mail.SetHeader("From", m.conf.User)
+	mail.SetHeader("To", to)
+	mail.SetHeader("Subject", "Регистрация прошла успешно")
 
-func (m *mailer) generateBody(tmpl string, data any) (string, error) {
-	t, err := template.New("email").Parse(tmpl)
+	tmpl, err := template.ParseFiles("templates/register.html")
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed to parse email template: %w", err)
 	}
+
 	var body bytes.Buffer
-	if err := t.Execute(&body, data); err != nil {
-		return "", err
+	if err := tmpl.Execute(&body, nil); err != nil {
+		return fmt.Errorf("failed to execute email template: %w", err)
 	}
-	return body.String(), nil
+
+	mail.SetBody("text/html", body.String())
+
+	d := gomail.NewDialer(m.conf.Host, m.conf.Port, m.conf.User, m.conf.Pass)
+	if err := d.DialAndSend(mail); err != nil {
+		return fmt.Errorf("failed to send register email: %w", err)
+	}
+
+	return nil
 }
