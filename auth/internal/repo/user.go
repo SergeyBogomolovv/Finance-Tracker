@@ -2,6 +2,7 @@ package repo
 
 import (
 	"FinanceTracker/auth/internal/domain"
+	"FinanceTracker/auth/pkg/transaction"
 	"context"
 	"database/sql"
 	"errors"
@@ -52,7 +53,7 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (domain.User, e
 		MustSql()
 
 	var user User
-	err := r.storage.GetContext(ctx, &user, query, args...)
+	err := r.getContext(ctx, &user, query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.User{}, domain.ErrUserNotFound
 	}
@@ -81,10 +82,18 @@ func (r *userRepo) Create(ctx context.Context, user domain.User) (domain.User, e
 		MustSql()
 
 	var createdUser User
-	err := r.storage.GetContext(ctx, &createdUser, query, args...)
+	err := r.getContext(ctx, &createdUser, query, args...)
 	if err != nil {
 		return domain.User{}, err
 	}
 
 	return createdUser.ToDomain(), nil
+}
+
+func (r *userRepo) getContext(ctx context.Context, dest any, query string, args ...any) error {
+	tx := transaction.ExtractTx(ctx)
+	if tx != nil {
+		return tx.GetContext(ctx, dest, query, args...)
+	}
+	return r.storage.GetContext(ctx, dest, query, args...)
 }

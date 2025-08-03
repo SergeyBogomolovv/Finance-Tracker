@@ -13,6 +13,7 @@ import (
 
 	log "FinanceTracker/auth/pkg/logger"
 	"FinanceTracker/auth/pkg/postgres"
+	"FinanceTracker/auth/pkg/transaction"
 
 	"github.com/joho/godotenv"
 )
@@ -25,9 +26,10 @@ func main() {
 	defer postgres.Close()
 	logger.Info("postgres connected")
 
+	txManager := transaction.NewManager(postgres)
 	userRepo := repo.NewUserRepo(postgres)
 	producer := producer.New(conf.KafkaBrokers)
-	authService := service.NewAuthService(userRepo, producer, conf.JwtTTL, conf.JwtSecret)
+	authService := service.NewAuthService(userRepo, producer, txManager, conf.JwtTTL, conf.JwtSecret)
 	authController := controller.NewAuthController(authService, conf.OAuth)
 
 	app := app.New(logger, authController)

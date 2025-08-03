@@ -3,6 +3,8 @@ package service
 import (
 	"FinanceTracker/auth/internal/domain"
 	"FinanceTracker/auth/internal/dto"
+	"FinanceTracker/auth/pkg/logger"
+	"FinanceTracker/auth/pkg/transaction"
 	"context"
 	"errors"
 	"fmt"
@@ -23,18 +25,20 @@ type Producer interface {
 }
 
 type authService struct {
-	users    UserRepo
-	producer Producer
-	jwtTTL   time.Duration
-	jwtKey   []byte
+	users     UserRepo
+	txManager transaction.Manager
+	producer  Producer
+	jwtTTL    time.Duration
+	jwtKey    []byte
 }
 
-func NewAuthService(users UserRepo, producer Producer, jwtTTL time.Duration, jwtKey []byte) *authService {
+func NewAuthService(users UserRepo, producer Producer, txManager transaction.Manager, jwtTTL time.Duration, jwtKey []byte) *authService {
 	return &authService{
-		producer: producer,
-		users:    users,
-		jwtTTL:   jwtTTL,
-		jwtKey:   jwtKey,
+		producer:  producer,
+		users:     users,
+		jwtTTL:    jwtTTL,
+		jwtKey:    jwtKey,
+		txManager: txManager,
 	}
 }
 
@@ -42,25 +46,7 @@ func (s *authService) OAuth(ctx context.Context, payload dto.OAuthPayload) (stri
 	user, err := s.users.GetByEmail(ctx, payload.Email)
 
 	if errors.Is(err, domain.ErrUserNotFound) {
-		// TODO: ОБЕРНУТЬ В ТРАНЗАКЦИЮ И ВЫНЕСТИ В ОТДЕЛЬНЫЙ МЕТОД РЕГИСТРАЦИИ
-		user, err = s.users.Create(ctx, domain.User{
-			Email:           payload.Email,
-			FullName:        payload.FullName,
-			AvatarUrl:       payload.AvatarUrl,
-			Provider:        domain.UserProvider(payload.Provider),
-			IsEmailVerified: true,
-		})
-		if err != nil {
-			return "", fmt.Errorf("failed to create user: %w", err)
-		}
-		token, err := signToken(user.ID, []byte("secret"), 24*time.Hour)
-		if err != nil {
-			return "", fmt.Errorf("failed to sign token: %w", err)
-		}
-		if err := s.producer.PublishUserRegistered(ctx, user.ID); err != nil {
-			return "", fmt.Errorf("failed to publish user registered event: %w", err)
-		}
-		return token, nil
+		return s.oauthRegister(ctx, payload)
 	}
 
 	if err != nil {
@@ -75,6 +61,41 @@ func (s *authService) OAuth(ctx context.Context, payload dto.OAuthPayload) (stri
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
+
+	logger.Debug(ctx, "user logged in", "email", payload.Email, "provider", payload.Provider)
+
+	return token, nil
+}
+
+func (s *authService) oauthRegister(ctx context.Context, payload dto.OAuthPayload) (string, error) {
+	var token string
+	err := s.txManager.Do(ctx, func(ctx context.Context) error {
+		user, err := s.users.Create(ctx, domain.User{
+			Email:           payload.Email,
+			FullName:        payload.FullName,
+			AvatarUrl:       payload.AvatarUrl,
+			Provider:        domain.UserProvider(payload.Provider),
+			IsEmailVerified: true,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create user: %w", err)
+		}
+		if err := s.producer.PublishUserRegistered(ctx, user.ID); err != nil {
+			return fmt.Errorf("failed to publish user registered event: %w", err)
+		}
+		token, err = signToken(user.ID, s.jwtKey, s.jwtTTL)
+		if err != nil {
+			return fmt.Errorf("failed to sign token: %w", err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	logger.Debug(ctx, "user registered", "email", payload.Email, "provider", payload.Provider)
+
 	return token, nil
 }
 
