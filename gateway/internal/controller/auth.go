@@ -166,10 +166,18 @@ func (c *authController) handleEmailAuth(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err := c.authService.SendEmailOTP(r.Context(), &pb.SendEmailOTPRequest{Email: req.Email})
+	_, err := c.authService.GenerateOTP(r.Context(), &pb.GenerateOTPRequest{Email: req.Email})
 	if err != nil {
-		logger.Error(ctx, "failed to send email", "err", err)
-		utils.WriteError(w, "failed to send email", http.StatusInternalServerError)
+		if e, ok := status.FromError(err); ok {
+			switch e.Code() {
+			case codes.InvalidArgument:
+				utils.WriteError(w, e.Message(), http.StatusBadRequest)
+				return
+			}
+		}
+
+		logger.Error(ctx, "failed to generate otp", "err", err)
+		utils.WriteError(w, "failed to generate otp", http.StatusInternalServerError)
 		return
 	}
 
@@ -206,13 +214,15 @@ func (c *authController) handleVerifyEmailOTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	resp, err := c.authService.VerifyEmailOTP(r.Context(), &pb.VerifyEmailOTPRequest{Email: req.Email, Otp: req.OTP})
+	resp, err := c.authService.VerifyOTP(r.Context(), &pb.VerifyOTPRequest{Email: req.Email, Otp: req.OTP})
 	if err != nil {
 		if e, ok := status.FromError(err); ok {
 			switch e.Code() {
 			case codes.InvalidArgument:
-				logger.Debug(ctx, "invalid email or otp", "err", err)
-				utils.WriteError(w, "invalid email or otp", http.StatusBadRequest)
+				utils.WriteError(w, e.Message(), http.StatusBadRequest)
+				return
+			case codes.Unauthenticated:
+				utils.WriteError(w, e.Message(), http.StatusUnauthorized)
 				return
 			}
 		}

@@ -17,6 +17,8 @@ import { FcGoogle } from 'react-icons/fc'
 import { FaYandex } from 'react-icons/fa'
 import { API_URL } from '@/shared/constants'
 import { useRouter } from 'next/navigation'
+import { sendOTP } from '../api/send-otp'
+import { verifyOTP } from '../api/verify-otp'
 
 export function AuthForm() {
   const [email, setEmail] = useState('')
@@ -26,17 +28,15 @@ export function AuthForm() {
 
   const sendCode = async (email: string) => {
     setLoading(true)
-    addToast({ title: `Отправка кода на ${email}` })
-    await new Promise((res) => setTimeout(res, 500))
+    await sendOTP(email)
     addToast({ title: 'Код отправлен' })
     setCodeSent(true)
     setLoading(false)
   }
 
-  const emailAuth = async (data: Record<string, FormDataEntryValue>) => {
+  const emailAuth = async (otp: string) => {
     setLoading(true)
-    addToast({ title: 'Подтверждение кода', description: JSON.stringify({ ...data, email }) })
-    await new Promise((res) => setTimeout(res, 500))
+    await verifyOTP(email, otp)
     addToast({ title: 'Аутентификация прошла' })
     setLoading(false)
     router.refresh()
@@ -51,7 +51,7 @@ export function AuthForm() {
       setEmail(data.email as string)
       await sendCode(data.email as string)
     } else {
-      await emailAuth(data)
+      await emailAuth(data.otp as string)
     }
   }
 

@@ -21,8 +21,8 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	AuthService_ExchangeGoogleOAuth_FullMethodName = "/auth.AuthService/ExchangeGoogleOAuth"
 	AuthService_ExchangeYandexOAuth_FullMethodName = "/auth.AuthService/ExchangeYandexOAuth"
-	AuthService_SendEmailOTP_FullMethodName        = "/auth.AuthService/SendEmailOTP"
-	AuthService_VerifyEmailOTP_FullMethodName      = "/auth.AuthService/VerifyEmailOTP"
+	AuthService_GenerateOTP_FullMethodName         = "/auth.AuthService/GenerateOTP"
+	AuthService_VerifyOTP_FullMethodName           = "/auth.AuthService/VerifyOTP"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -31,8 +31,8 @@ const (
 type AuthServiceClient interface {
 	ExchangeGoogleOAuth(ctx context.Context, in *OAuthRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	ExchangeYandexOAuth(ctx context.Context, in *OAuthRequest, opts ...grpc.CallOption) (*AuthResponse, error)
-	SendEmailOTP(ctx context.Context, in *SendEmailOTPRequest, opts ...grpc.CallOption) (*SendEmailOTPResponse, error)
-	VerifyEmailOTP(ctx context.Context, in *VerifyEmailOTPRequest, opts ...grpc.CallOption) (*AuthResponse, error)
+	GenerateOTP(ctx context.Context, in *GenerateOTPRequest, opts ...grpc.CallOption) (*GenerateOTPResponse, error)
+	VerifyOTP(ctx context.Context, in *VerifyOTPRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 }
 
 type authServiceClient struct {
@@ -63,20 +63,20 @@ func (c *authServiceClient) ExchangeYandexOAuth(ctx context.Context, in *OAuthRe
 	return out, nil
 }
 
-func (c *authServiceClient) SendEmailOTP(ctx context.Context, in *SendEmailOTPRequest, opts ...grpc.CallOption) (*SendEmailOTPResponse, error) {
+func (c *authServiceClient) GenerateOTP(ctx context.Context, in *GenerateOTPRequest, opts ...grpc.CallOption) (*GenerateOTPResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SendEmailOTPResponse)
-	err := c.cc.Invoke(ctx, AuthService_SendEmailOTP_FullMethodName, in, out, cOpts...)
+	out := new(GenerateOTPResponse)
+	err := c.cc.Invoke(ctx, AuthService_GenerateOTP_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authServiceClient) VerifyEmailOTP(ctx context.Context, in *VerifyEmailOTPRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
+func (c *authServiceClient) VerifyOTP(ctx context.Context, in *VerifyOTPRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AuthResponse)
-	err := c.cc.Invoke(ctx, AuthService_VerifyEmailOTP_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, AuthService_VerifyOTP_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +89,8 @@ func (c *authServiceClient) VerifyEmailOTP(ctx context.Context, in *VerifyEmailO
 type AuthServiceServer interface {
 	ExchangeGoogleOAuth(context.Context, *OAuthRequest) (*AuthResponse, error)
 	ExchangeYandexOAuth(context.Context, *OAuthRequest) (*AuthResponse, error)
-	SendEmailOTP(context.Context, *SendEmailOTPRequest) (*SendEmailOTPResponse, error)
-	VerifyEmailOTP(context.Context, *VerifyEmailOTPRequest) (*AuthResponse, error)
+	GenerateOTP(context.Context, *GenerateOTPRequest) (*GenerateOTPResponse, error)
+	VerifyOTP(context.Context, *VerifyOTPRequest) (*AuthResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -107,11 +107,11 @@ func (UnimplementedAuthServiceServer) ExchangeGoogleOAuth(context.Context, *OAut
 func (UnimplementedAuthServiceServer) ExchangeYandexOAuth(context.Context, *OAuthRequest) (*AuthResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExchangeYandexOAuth not implemented")
 }
-func (UnimplementedAuthServiceServer) SendEmailOTP(context.Context, *SendEmailOTPRequest) (*SendEmailOTPResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendEmailOTP not implemented")
+func (UnimplementedAuthServiceServer) GenerateOTP(context.Context, *GenerateOTPRequest) (*GenerateOTPResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateOTP not implemented")
 }
-func (UnimplementedAuthServiceServer) VerifyEmailOTP(context.Context, *VerifyEmailOTPRequest) (*AuthResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VerifyEmailOTP not implemented")
+func (UnimplementedAuthServiceServer) VerifyOTP(context.Context, *VerifyOTPRequest) (*AuthResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyOTP not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -170,38 +170,38 @@ func _AuthService_ExchangeYandexOAuth_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthService_SendEmailOTP_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendEmailOTPRequest)
+func _AuthService_GenerateOTP_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateOTPRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).SendEmailOTP(ctx, in)
+		return srv.(AuthServiceServer).GenerateOTP(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_SendEmailOTP_FullMethodName,
+		FullMethod: AuthService_GenerateOTP_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).SendEmailOTP(ctx, req.(*SendEmailOTPRequest))
+		return srv.(AuthServiceServer).GenerateOTP(ctx, req.(*GenerateOTPRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthService_VerifyEmailOTP_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VerifyEmailOTPRequest)
+func _AuthService_VerifyOTP_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyOTPRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).VerifyEmailOTP(ctx, in)
+		return srv.(AuthServiceServer).VerifyOTP(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_VerifyEmailOTP_FullMethodName,
+		FullMethod: AuthService_VerifyOTP_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).VerifyEmailOTP(ctx, req.(*VerifyEmailOTPRequest))
+		return srv.(AuthServiceServer).VerifyOTP(ctx, req.(*VerifyOTPRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -222,12 +222,12 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AuthService_ExchangeYandexOAuth_Handler,
 		},
 		{
-			MethodName: "SendEmailOTP",
-			Handler:    _AuthService_SendEmailOTP_Handler,
+			MethodName: "GenerateOTP",
+			Handler:    _AuthService_GenerateOTP_Handler,
 		},
 		{
-			MethodName: "VerifyEmailOTP",
-			Handler:    _AuthService_VerifyEmailOTP_Handler,
+			MethodName: "VerifyOTP",
+			Handler:    _AuthService_VerifyOTP_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

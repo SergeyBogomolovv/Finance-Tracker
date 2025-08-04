@@ -64,6 +64,43 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (domain.User, e
 	return user.ToDomain(), nil
 }
 
+func (r *userRepo) GetByID(ctx context.Context, userID int) (domain.User, error) {
+	query, args := r.qb.Select("user_id", "email", "provider", "is_email_verified", "full_name", "avatar_url", "created_at").
+		From("users").
+		Where(sq.Eq{"user_id": userID}).
+		MustSql()
+
+	var user User
+	err := r.getContext(ctx, &user, query, args...)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.User{}, domain.ErrUserNotFound
+	}
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	return user.ToDomain(), nil
+}
+
+func (r *userRepo) MarkEmailVerified(ctx context.Context, userID int) error {
+	query, args := r.qb.Update("users").
+		Set("is_email_verified", true).
+		Where(sq.Eq{"user_id": userID}).
+		MustSql()
+	res, err := r.execContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	aff, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff == 0 {
+		return domain.ErrUserNotFound
+	}
+	return err
+}
+
 func (r *userRepo) Create(ctx context.Context, user domain.User) (domain.User, error) {
 	m := map[string]any{
 		"email":             user.Email,
@@ -96,4 +133,12 @@ func (r *userRepo) getContext(ctx context.Context, dest any, query string, args 
 		return tx.GetContext(ctx, dest, query, args...)
 	}
 	return r.storage.GetContext(ctx, dest, query, args...)
+}
+
+func (r *userRepo) execContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	tx := transaction.ExtractTx(ctx)
+	if tx != nil {
+		return tx.ExecContext(ctx, query, args...)
+	}
+	return r.storage.ExecContext(ctx, query, args...)
 }

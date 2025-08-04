@@ -2,14 +2,17 @@ package controller
 
 import (
 	"FinanceTracker/auth/internal/config"
+	"FinanceTracker/auth/internal/domain"
 	"FinanceTracker/auth/internal/dto"
 	pb "FinanceTracker/auth/pkg/api/auth"
 	"FinanceTracker/auth/pkg/logger"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/yandex"
@@ -20,6 +23,8 @@ import (
 
 type AuthService interface {
 	OAuth(ctx context.Context, payload dto.OAuthPayload) (string, error)
+	GenerateOTP(ctx context.Context, email string) error
+	VerifyOTP(ctx context.Context, email, otp string) (string, error)
 }
 
 type authController struct {
@@ -27,6 +32,7 @@ type authController struct {
 	googleConfig *oauth2.Config
 	yandexConfig *oauth2.Config
 	authService  AuthService
+	validate     *validator.Validate
 }
 
 func NewAuthController(authService AuthService, oauthConf config.OAuth) *authController {
@@ -45,6 +51,7 @@ func NewAuthController(authService AuthService, oauthConf config.OAuth) *authCon
 			Endpoint:     yandex.Endpoint,
 		},
 		authService: authService,
+		validate:    validator.New(),
 	}
 }
 
@@ -129,10 +136,39 @@ func (c *authController) ExchangeYandexOAuth(ctx context.Context, req *pb.OAuthR
 	return &pb.AuthResponse{AccessToken: accessToken}, nil
 }
 
-func (c *authController) SendEmailOTP(ctx context.Context, req *pb.SendEmailOTPRequest) (*pb.SendEmailOTPResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendEmailOTP not implemented")
+func (c *authController) GenerateOTP(ctx context.Context, req *pb.GenerateOTPRequest) (*pb.GenerateOTPResponse, error) {
+	if err := c.validate.Var(req.Email, "email"); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid email format")
+	}
+
+	err := c.authService.GenerateOTP(ctx, req.Email)
+	if errors.Is(err, domain.ErrProviderMismatch) {
+		return nil, status.Error(codes.InvalidArgument, "invalid provider")
+	}
+	if err != nil {
+		logger.Error(ctx, "failed to generate email OTP", "err", err)
+		return nil, status.Error(codes.Internal, "failed to generate email OTP")
+	}
+	return &pb.GenerateOTPResponse{}, nil
 }
 
-func (c *authController) VerifyEmailOTP(ctx context.Context, req *pb.VerifyEmailOTPRequest) (*pb.AuthResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VerifyEmailOTP not implemented")
+func (c *authController) VerifyOTP(ctx context.Context, req *pb.VerifyOTPRequest) (*pb.AuthResponse, error) {
+	if err := c.validate.Var(req.Email, "email"); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid email format")
+	}
+	if err := c.validate.Var(req.Otp, "required"); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "OTP is required")
+	}
+
+	accessToken, err := c.authService.VerifyOTP(ctx, req.Email, req.Otp)
+	if errors.Is(err, domain.ErrInvalidOTP) {
+		return nil, status.Error(codes.Unauthenticated, "invalid OTP")
+	}
+
+	if err != nil {
+		logger.Error(ctx, "failed to verify email OTP", "err", err)
+		return nil, status.Error(codes.Internal, "failed to verify email OTP")
+	}
+
+	return &pb.AuthResponse{AccessToken: accessToken}, nil
 }

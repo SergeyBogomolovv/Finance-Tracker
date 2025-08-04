@@ -17,6 +17,13 @@ import (
 type UserRepo interface {
 	GetByEmail(ctx context.Context, email string) (domain.User, error)
 	Create(ctx context.Context, user domain.User) (domain.User, error)
+	MarkEmailVerified(ctx context.Context, userID int) error
+}
+
+type OTPRepo interface {
+	Generate(ctx context.Context, userID int) (domain.OTP, error)
+	Validate(ctx context.Context, userID int, code string) (bool, error)
+	DeleteAll(ctx context.Context, userID int) error
 }
 
 type Producer interface {
@@ -25,6 +32,7 @@ type Producer interface {
 }
 
 type authService struct {
+	otps      OTPRepo
 	users     UserRepo
 	txManager transaction.Manager
 	producer  Producer
@@ -32,8 +40,9 @@ type authService struct {
 	jwtKey    []byte
 }
 
-func NewAuthService(users UserRepo, producer Producer, txManager transaction.Manager, jwtTTL time.Duration, jwtKey []byte) *authService {
+func NewAuthService(users UserRepo, otps OTPRepo, producer Producer, txManager transaction.Manager, jwtTTL time.Duration, jwtKey []byte) *authService {
 	return &authService{
+		otps:      otps,
 		producer:  producer,
 		users:     users,
 		jwtTTL:    jwtTTL,
@@ -96,6 +105,119 @@ func (s *authService) oauthRegister(ctx context.Context, payload dto.OAuthPayloa
 
 	logger.Debug(ctx, "user registered", "email", payload.Email, "provider", payload.Provider)
 
+	return token, nil
+}
+
+func (c *authService) GenerateOTP(ctx context.Context, email string) error {
+	user, err := c.users.GetByEmail(ctx, email)
+
+	if errors.Is(err, domain.ErrUserNotFound) {
+		return c.emailRegister(ctx, email)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if user.Provider != domain.UserProviderEmail {
+		return domain.ErrProviderMismatch
+	}
+
+	return c.txManager.Do(ctx, func(ctx context.Context) error {
+		// generate otp
+		otp, err := c.otps.Generate(ctx, user.ID)
+		if err != nil {
+			return fmt.Errorf("failed to generate OTP: %w", err)
+		}
+
+		// send otp
+		if err := c.producer.PublishOTPGenerated(ctx, otp.UserID, otp.Code); err != nil {
+			return fmt.Errorf("failed to publish OTP generated event: %w", err)
+		}
+
+		logger.Debug(ctx, "OTP generated", "email", email)
+		return nil
+	})
+}
+
+func (c *authService) emailRegister(ctx context.Context, email string) error {
+	return c.txManager.Do(ctx, func(ctx context.Context) error {
+		// add user
+		user, err := c.users.Create(ctx, domain.User{
+			Email:           email,
+			Provider:        domain.UserProviderEmail,
+			IsEmailVerified: false,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create user: %w", err)
+		}
+
+		// generate otp
+		otp, err := c.otps.Generate(ctx, user.ID)
+		if err != nil {
+			return fmt.Errorf("failed to generate OTP: %w", err)
+		}
+
+		// send otp
+		if err := c.producer.PublishOTPGenerated(ctx, otp.UserID, otp.Code); err != nil {
+			return fmt.Errorf("failed to publish OTP generated event: %w", err)
+		}
+
+		logger.Debug(ctx, "OTP generated", "email", email)
+		return nil
+	})
+}
+
+func (s *authService) VerifyOTP(ctx context.Context, email, code string) (string, error) {
+	// get user by email
+	user, err := s.users.GetByEmail(ctx, email)
+	// check if email exists
+	if errors.Is(err, domain.ErrUserNotFound) {
+		return "", domain.ErrInvalidOTP
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// validate OTP
+	valid, err := s.otps.Validate(ctx, user.ID, code)
+	if err != nil {
+		return "", fmt.Errorf("failed to validate OTP: %w", err)
+	}
+	if !valid {
+		return "", domain.ErrInvalidOTP
+	}
+
+	var token string
+	err = s.txManager.Do(ctx, func(ctx context.Context) error {
+		// delete used OTPs
+		if err := s.otps.DeleteAll(ctx, user.ID); err != nil {
+			return fmt.Errorf("failed to delete OTP: %w", err)
+		}
+
+		// sign JWT token
+		token, err = signToken(user.ID, s.jwtKey, s.jwtTTL)
+		if err != nil {
+			return fmt.Errorf("failed to sign token: %w", err)
+		}
+
+		// notify user if email is not verified
+		if !user.IsEmailVerified {
+			if err := s.users.MarkEmailVerified(ctx, user.ID); err != nil {
+				return fmt.Errorf("failed to mark email as verified: %w", err)
+			}
+			if err := s.producer.PublishUserRegistered(ctx, user.ID); err != nil {
+				return fmt.Errorf("failed to publish user registered event: %w", err)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	logger.Debug(ctx, "OTP verified", "email", email)
 	return token, nil
 }
 
