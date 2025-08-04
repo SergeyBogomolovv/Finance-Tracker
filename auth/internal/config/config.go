@@ -12,7 +12,8 @@ type Config struct {
 	Host string
 	Env  string
 
-	KafkaBrokers []string
+	KafkaBrokers      []string
+	KafkaBatchTimeout time.Duration
 
 	PostgresURL string
 
@@ -32,10 +33,11 @@ type OAuth struct {
 
 func New() Config {
 	return Config{
-		Port:         envInt("PORT", 50051),
-		Host:         env("HOST", "localhost"),
-		Env:          env("ENV", "development"),
-		KafkaBrokers: envArray("KAFKA_BROKERS", "localhost:9092"),
+		Port:              envInt("PORT", 50051),
+		Host:              env("HOST", "localhost"),
+		Env:               env("ENV", "development"),
+		KafkaBrokers:      envArray("KAFKA_BROKERS", "localhost:9092"),
+		KafkaBatchTimeout: envDuration("KAFKA_BATCH_TIMEOUT", 10*time.Millisecond),
 		OAuth: OAuth{
 			RedirectURL:        env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
 			GoogleClientID:     env("GOOGLE_CLIENT_ID"),

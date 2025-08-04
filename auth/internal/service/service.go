@@ -52,8 +52,10 @@ func NewAuthService(users UserRepo, otps OTPRepo, producer Producer, txManager t
 }
 
 func (s *authService) OAuth(ctx context.Context, payload dto.OAuthPayload) (string, error) {
+	// check if user already exists
 	user, err := s.users.GetByEmail(ctx, payload.Email)
 
+	// if user not found, register new user
 	if errors.Is(err, domain.ErrUserNotFound) {
 		return s.oauthRegister(ctx, payload)
 	}
@@ -62,10 +64,12 @@ func (s *authService) OAuth(ctx context.Context, payload dto.OAuthPayload) (stri
 		return "", fmt.Errorf("failed to get user: %w", err)
 	}
 
+	// check provider matches
 	if user.Provider != domain.UserProvider(payload.Provider) {
 		return "", domain.ErrProviderMismatch
 	}
 
+	// sign JWT token
 	token, err := signToken(user.ID, s.jwtKey, s.jwtTTL)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
@@ -79,6 +83,7 @@ func (s *authService) OAuth(ctx context.Context, payload dto.OAuthPayload) (stri
 func (s *authService) oauthRegister(ctx context.Context, payload dto.OAuthPayload) (string, error) {
 	var token string
 	err := s.txManager.Do(ctx, func(ctx context.Context) error {
+		// create new user
 		user, err := s.users.Create(ctx, domain.User{
 			Email:           payload.Email,
 			FullName:        payload.FullName,
@@ -89,9 +94,13 @@ func (s *authService) oauthRegister(ctx context.Context, payload dto.OAuthPayloa
 		if err != nil {
 			return fmt.Errorf("failed to create user: %w", err)
 		}
+
+		// send user registered event
 		if err := s.producer.PublishUserRegistered(ctx, user.ID); err != nil {
 			return fmt.Errorf("failed to publish user registered event: %w", err)
 		}
+
+		// sign JWT token
 		token, err = signToken(user.ID, s.jwtKey, s.jwtTTL)
 		if err != nil {
 			return fmt.Errorf("failed to sign token: %w", err)
@@ -109,8 +118,10 @@ func (s *authService) oauthRegister(ctx context.Context, payload dto.OAuthPayloa
 }
 
 func (c *authService) GenerateOTP(ctx context.Context, email string) error {
+	// check if user exists
 	user, err := c.users.GetByEmail(ctx, email)
 
+	// if user not found, register new user
 	if errors.Is(err, domain.ErrUserNotFound) {
 		return c.emailRegister(ctx, email)
 	}
@@ -119,6 +130,7 @@ func (c *authService) GenerateOTP(ctx context.Context, email string) error {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
 
+	// check provider matches
 	if user.Provider != domain.UserProviderEmail {
 		return domain.ErrProviderMismatch
 	}

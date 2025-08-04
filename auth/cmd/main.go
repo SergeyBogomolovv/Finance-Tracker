@@ -29,7 +29,7 @@ func main() {
 	txManager := transaction.NewManager(postgres)
 	userRepo := repo.NewUserRepo(postgres)
 	otpRepo := repo.NewOTPRepo(postgres)
-	producer := producer.New(conf.KafkaBrokers)
+	producer := producer.New(conf.KafkaBrokers, conf.KafkaBatchTimeout)
 	authService := service.NewAuthService(userRepo, otpRepo, producer, txManager, conf.JwtTTL, conf.JwtSecret)
 	authController := controller.NewAuthController(authService, conf.OAuth)
 

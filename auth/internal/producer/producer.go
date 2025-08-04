@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	kafka "github.com/segmentio/kafka-go"
 )
@@ -14,7 +15,7 @@ type producer struct {
 	otpGeneratedWriter   *kafka.Writer
 }
 
-func New(brokers []string) *producer {
+func New(brokers []string, batchTimeout time.Duration) *producer {
 	addr := kafka.TCP(brokers...)
 
 	return &producer{
@@ -22,11 +23,13 @@ func New(brokers []string) *producer {
 			Addr:                   addr,
 			Topic:                  events.TopicRegistered,
 			AllowAutoTopicCreation: true,
+			BatchTimeout:           batchTimeout, //10 * time.Millisecond
 		},
 		otpGeneratedWriter: &kafka.Writer{
 			Addr:                   addr,
 			Topic:                  events.TopicOTPGenerated,
 			AllowAutoTopicCreation: true,
+			BatchTimeout:           batchTimeout, //10 * time.Millisecond
 		},
 	}
 }

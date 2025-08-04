@@ -152,6 +152,7 @@ type EmailAuthRequest struct {
 // @Failure		500		{object}	utils.ErrorResponse				"Сбой при отправке"
 // @Router			/auth/email [post]
 func (c *authController) handleEmailAuth(w http.ResponseWriter, r *http.Request) {
+	// TODO: add rate limiter
 	ctx := r.Context()
 	var req EmailAuthRequest
 	if err := utils.DecodeBody(r, &req); err != nil {
