@@ -7,12 +7,17 @@ import (
 )
 
 type Config struct {
-	Port            int
-	Host            string
-	Env             string
-	OAuth           OAuth
-	AuthServiceAddr string
-	CorsOrigins     []string
+	Port int
+	Host string
+	Env  string
+
+	OAuth     OAuth
+	JwtSecret []byte
+
+	AuthServiceAddr    string
+	ProfileServiceAddr string
+
+	CorsOrigins []string
 }
 
 type OAuth struct {
@@ -24,17 +29,19 @@ type OAuth struct {
 
 func New() Config {
 	return Config{
-		Port: envInt("PORT", 8080),
-		Host: env("HOST", "localhost"),
-		Env:  env("ENV", "development"),
+		Port:      envInt("PORT", 8080),
+		Host:      env("HOST", "localhost"),
+		Env:       env("ENV", "development"),
+		JwtSecret: []byte(env("JWT_SECRET", "secret")),
 		OAuth: OAuth{
 			RedirectURL:       env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
 			GoogleClientID:    env("GOOGLE_CLIENT_ID"),
 			YandexClientID:    env("YANDEX_CLIENT_ID"),
 			ClientRedirectURL: env("CLIENT_REDIRECT_URL", "http://localhost:3000"),
 		},
-		AuthServiceAddr: env("AUTH_SERVICE_ADDR", "localhost:50051"),
-		CorsOrigins:     strings.Split(env("CORS_ORIGINS", "http://localhost:3000"), ","),
+		AuthServiceAddr:    env("AUTH_SERVICE_ADDR", "localhost:50051"),
+		ProfileServiceAddr: env("PROFILE_SERVICE_ADDR", "localhost:50052"),
+		CorsOrigins:        strings.Split(env("CORS_ORIGINS", "http://localhost:3000"), ","),
 	}
 }
 

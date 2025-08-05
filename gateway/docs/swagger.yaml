@@ -6,6 +6,19 @@ definitions:
     required:
     - email
     type: object
+  controller.ProfileResponse:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      provider:
+        type: string
+      user_id:
+        type: integer
+    type: object
   controller.VerifyEmailRequest:
     properties:
       email:
@@ -165,4 +178,39 @@ paths:
       summary: Yandex OAuth вход
       tags:
       - auth
+  /profile/me:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает информацию о профиле аутентифицированного пользователя.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с данными профиля
+          schema:
+            $ref: '#/definitions/controller.ProfileResponse'
+        "400":
+          description: Профиль не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "503":
+          description: Сервис недоступен
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить профиль текущего пользователя
+      tags:
+      - Профиль
+securityDefinitions:
+  BearerAuth:
+    description: Используйте формат "Bearer {token}"
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

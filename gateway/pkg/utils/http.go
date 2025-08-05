@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -58,4 +59,17 @@ type MessageResponse struct {
 
 func WriteMessage(w http.ResponseWriter, message string) error {
 	return WriteJSON(w, MessageResponse{Message: message}, http.StatusOK)
+}
+
+type userIdKey struct{}
+
+func GetUserID(ctx context.Context) int64 {
+	if userId, ok := ctx.Value(userIdKey{}).(int64); ok {
+		return userId
+	}
+	return 0
+}
+
+func WithUserID(ctx context.Context, userID int64) context.Context {
+	return context.WithValue(ctx, userIdKey{}, userID)
 }

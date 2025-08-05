@@ -27,6 +27,8 @@ endif
 proto-gen:
 	protoc --go_out=./auth/pkg/ --go-grpc_out=./auth/pkg/ -I. proto/auth.proto
 	protoc --go_out=./gateway/pkg/ --go-grpc_out=./gateway/pkg/ -I. proto/auth.proto
+	protoc --go_out=./profile/pkg/ --go-grpc_out=./profile/pkg/ -I. proto/profile.proto
+	protoc --go_out=./gateway/pkg/ --go-grpc_out=./gateway/pkg/ -I. proto/profile.proto
 
 # Docker Compose Dev
 dev-up:
