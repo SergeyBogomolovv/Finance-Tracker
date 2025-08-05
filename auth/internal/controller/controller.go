@@ -21,6 +21,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	googleUserInfoUrl = "https://www.googleapis.com/oauth2/v2/userinfo"
+	yandexUserInfoUrl = "https://login.yandex.ru/info"
+)
+
 type AuthService interface {
 	OAuth(ctx context.Context, payload dto.OAuthPayload) (string, error)
 	GenerateOTP(ctx context.Context, email string) error
@@ -73,7 +78,7 @@ func (c *authController) ExchangeGoogleOAuth(ctx context.Context, req *pb.OAuthR
 	}
 
 	client := c.googleConfig.Client(ctx, token)
-	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	resp, err := client.Get(googleUserInfoUrl)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		logger.Error(ctx, "failed to get user info", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to get user info")
@@ -112,7 +117,7 @@ func (c *authController) ExchangeYandexOAuth(ctx context.Context, req *pb.OAuthR
 	}
 
 	client := c.yandexConfig.Client(ctx, token)
-	resp, err := client.Get("https://login.yandex.ru/info")
+	resp, err := client.Get(yandexUserInfoUrl)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		logger.Error(ctx, "failed to get user info", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to get user info")

@@ -23,13 +23,13 @@ func New(brokers []string, batchTimeout time.Duration) *producer {
 			Addr:                   addr,
 			Topic:                  events.TopicRegistered,
 			AllowAutoTopicCreation: true,
-			BatchTimeout:           batchTimeout, //10 * time.Millisecond
+			BatchTimeout:           batchTimeout,
 		},
 		otpGeneratedWriter: &kafka.Writer{
 			Addr:                   addr,
 			Topic:                  events.TopicOTPGenerated,
 			AllowAutoTopicCreation: true,
-			BatchTimeout:           batchTimeout, //10 * time.Millisecond
+			BatchTimeout:           batchTimeout,
 		},
 	}
 }
