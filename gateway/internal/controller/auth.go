@@ -5,9 +5,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"time"
 
 	"FinanceTracker/gateway/internal/config"
 	pb "FinanceTracker/gateway/pkg/api/auth"
+	"FinanceTracker/gateway/pkg/limiter"
 	"FinanceTracker/gateway/pkg/logger"
 	"FinanceTracker/gateway/pkg/utils"
 
@@ -15,16 +17,18 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/yandex"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type authController struct {
-	validate          *validator.Validate
-	googleConfig      *oauth2.Config
-	yandexConfig      *oauth2.Config
-	clientRedirectURL string
-	authService       pb.AuthServiceClient
+	validate     *validator.Validate
+	googleConfig *oauth2.Config
+	yandexConfig *oauth2.Config
+	redirectURL  string
+	failureUrl   string
+	authService  pb.AuthServiceClient
 }
 
 func NewAuthController(authService pb.AuthServiceClient, oauthConf config.OAuth) *authController {
@@ -40,18 +44,24 @@ func NewAuthController(authService pb.AuthServiceClient, oauthConf config.OAuth)
 			RedirectURL: fmt.Sprintf("%s/auth/yandex/callback", oauthConf.RedirectURL),
 			Endpoint:    yandex.Endpoint,
 		},
-		clientRedirectURL: oauthConf.ClientRedirectURL,
-		authService:       authService,
-		validate:          validator.New(),
+		redirectURL: oauthConf.ClientRedirectURL,
+		failureUrl:  fmt.Sprintf("%s/login?error=oauth_failed", oauthConf.RedirectURL),
+		authService: authService,
+		validate:    validator.New(),
 	}
 }
 
 func (c *authController) Init(r *http.ServeMux) {
+	const emailRateLimit = 30 * time.Second
+
 	r.HandleFunc("/auth/google/login", c.handleGoogleLogin)
-	r.HandleFunc("/auth/yandex/login", c.handleYandexLogin)
 	r.HandleFunc("/auth/google/callback", c.handleGoogleCallback)
+	r.HandleFunc("/auth/yandex/login", c.handleYandexLogin)
 	r.HandleFunc("/auth/yandex/callback", c.handleYandexCallback)
-	r.HandleFunc("POST /auth/email", c.handleEmailAuth)
+	r.Handle(
+		"POST /auth/email",
+		limiter.New(rate.Every(emailRateLimit), 1).Wrap(http.HandlerFunc(c.handleEmailAuth)),
+	)
 	r.HandleFunc("POST /auth/email/verify", c.handleVerifyEmailOTP)
 }
 
@@ -80,20 +90,20 @@ func (c *authController) handleGoogleCallback(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	if !checkOAuthState(r) {
 		logger.Debug(ctx, "invalid state")
-		http.Redirect(w, r, c.clientRedirectURL+"?error=invalid_state", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, c.failureUrl, http.StatusTemporaryRedirect)
 		return
 	}
 
 	code := r.URL.Query().Get("code")
-	resp, err := c.authService.ExchangeGoogleOAuth(r.Context(), &pb.OAuthRequest{Code: code})
+	resp, err := c.authService.ExchangeGoogleOAuth(ctx, &pb.OAuthRequest{Code: code})
 	if err != nil {
 		logger.Error(ctx, "failed to exchange google oauth", "err", err)
-		http.Redirect(w, r, c.clientRedirectURL+"?error=oauth_failed", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, c.failureUrl, http.StatusTemporaryRedirect)
 		return
 	}
 
 	setAuthTokenToCookie(w, resp.AccessToken)
-	http.Redirect(w, r, c.clientRedirectURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, c.redirectURL, http.StatusTemporaryRedirect)
 }
 
 // @Summary		Yandex OAuth вход
@@ -121,20 +131,20 @@ func (c *authController) handleYandexCallback(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	if !checkOAuthState(r) {
 		logger.Debug(ctx, "invalid state")
-		http.Redirect(w, r, c.clientRedirectURL+"?error=invalid_state", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, c.failureUrl, http.StatusTemporaryRedirect)
 		return
 	}
 
 	code := r.URL.Query().Get("code")
-	resp, err := c.authService.ExchangeYandexOAuth(r.Context(), &pb.OAuthRequest{Code: code})
+	resp, err := c.authService.ExchangeYandexOAuth(ctx, &pb.OAuthRequest{Code: code})
 	if err != nil {
 		logger.Error(ctx, "failed to exchange yandex oauth", "err", err)
-		http.Redirect(w, r, c.clientRedirectURL+"?error=oauth_failed", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, c.failureUrl, http.StatusTemporaryRedirect)
 		return
 	}
 
 	setAuthTokenToCookie(w, resp.AccessToken)
-	http.Redirect(w, r, c.clientRedirectURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, c.redirectURL, http.StatusTemporaryRedirect)
 }
 
 type EmailAuthRequest struct {
@@ -152,11 +162,11 @@ type EmailAuthRequest struct {
 // @Failure		500		{object}	utils.ErrorResponse				"Сбой при отправке"
 // @Router			/auth/email [post]
 func (c *authController) handleEmailAuth(w http.ResponseWriter, r *http.Request) {
-	// TODO: add rate limiter
 	ctx := r.Context()
+
 	var req EmailAuthRequest
 	if err := utils.DecodeBody(r, &req); err != nil {
-		logger.Error(ctx, "failed to decode body", "err", err)
+		logger.Debug(ctx, "failed to decode body", "err", err)
 		utils.WriteError(w, "invalid body", http.StatusBadRequest)
 		return
 	}
@@ -167,12 +177,16 @@ func (c *authController) handleEmailAuth(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err := c.authService.GenerateOTP(r.Context(), &pb.GenerateOTPRequest{Email: req.Email})
+	_, err := c.authService.GenerateOTP(ctx, &pb.GenerateOTPRequest{Email: req.Email})
 	if err != nil {
 		if e, ok := status.FromError(err); ok {
 			switch e.Code() {
 			case codes.InvalidArgument:
 				utils.WriteError(w, e.Message(), http.StatusBadRequest)
+				return
+			case codes.Unavailable:
+				logger.Error(ctx, "auth service unavailable", "err", e.Message())
+				utils.WriteError(w, "service unavailable", http.StatusServiceUnavailable)
 				return
 			}
 		}
@@ -202,9 +216,10 @@ type VerifyEmailRequest struct {
 // @Router			/auth/email/verify [post]
 func (c *authController) handleVerifyEmailOTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
 	var req VerifyEmailRequest
 	if err := utils.DecodeBody(r, &req); err != nil {
-		logger.Error(ctx, "failed to decode body", "err", err)
+		logger.Debug(ctx, "failed to decode body", "err", err)
 		utils.WriteError(w, "invalid body", http.StatusBadRequest)
 		return
 	}
@@ -215,7 +230,7 @@ func (c *authController) handleVerifyEmailOTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	resp, err := c.authService.VerifyOTP(r.Context(), &pb.VerifyOTPRequest{Email: req.Email, Otp: req.OTP})
+	resp, err := c.authService.VerifyOTP(ctx, &pb.VerifyOTPRequest{Email: req.Email, Otp: req.OTP})
 	if err != nil {
 		if e, ok := status.FromError(err); ok {
 			switch e.Code() {
@@ -224,6 +239,10 @@ func (c *authController) handleVerifyEmailOTP(w http.ResponseWriter, r *http.Req
 				return
 			case codes.Unauthenticated:
 				utils.WriteError(w, e.Message(), http.StatusUnauthorized)
+				return
+			case codes.Unavailable:
+				logger.Error(ctx, "auth service unavailable", "err", e.Message())
+				utils.WriteError(w, "service unavailable", http.StatusServiceUnavailable)
 				return
 			}
 		}
