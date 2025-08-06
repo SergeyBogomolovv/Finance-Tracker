@@ -34,26 +34,22 @@ func New(brokers []string, batchTimeout time.Duration) *producer {
 	}
 }
 
-func (p *producer) PublishUserRegistered(ctx context.Context, userID int) error {
-	data, err := json.Marshal(events.EventUserRegistered{UserID: userID})
+func (p *producer) PublishUserRegistered(ctx context.Context, event events.EventUserRegistered) error {
+	data, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	return p.userRegisteredWriter.WriteMessages(ctx, kafka.Message{
-		Value: data,
-	})
+	return p.userRegisteredWriter.WriteMessages(ctx, kafka.Message{Value: data})
 }
 
-func (p *producer) PublishOTPGenerated(ctx context.Context, userID int, code string) error {
-	data, err := json.Marshal(events.EventOTPGenerated{UserID: userID, Code: code})
+func (p *producer) PublishOTPGenerated(ctx context.Context, event events.EventOTPGenerated) error {
+	data, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	return p.otpGeneratedWriter.WriteMessages(ctx, kafka.Message{
-		Value: data,
-	})
+	return p.otpGeneratedWriter.WriteMessages(ctx, kafka.Message{Value: data})
 }
 
 func (p *producer) Close() error {

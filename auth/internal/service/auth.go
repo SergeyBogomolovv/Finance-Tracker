@@ -3,6 +3,7 @@ package service
 import (
 	"FinanceTracker/auth/internal/domain"
 	"FinanceTracker/auth/internal/dto"
+	"FinanceTracker/auth/pkg/events"
 	"FinanceTracker/auth/pkg/logger"
 	"FinanceTracker/auth/pkg/transaction"
 	"context"
@@ -16,7 +17,7 @@ import (
 
 type UserRepo interface {
 	GetByEmail(ctx context.Context, email string) (domain.User, error)
-	Create(ctx context.Context, user domain.User) (domain.User, error)
+	Create(ctx context.Context, data dto.CreateUserDto) (domain.User, error)
 	MarkEmailVerified(ctx context.Context, userID int) error
 }
 
@@ -27,8 +28,8 @@ type OTPRepo interface {
 }
 
 type Producer interface {
-	PublishUserRegistered(ctx context.Context, userID int) error
-	PublishOTPGenerated(ctx context.Context, userID int, code string) error
+	PublishUserRegistered(ctx context.Context, event events.EventUserRegistered) error
+	PublishOTPGenerated(ctx context.Context, event events.EventOTPGenerated) error
 }
 
 type authService struct {
@@ -84,10 +85,8 @@ func (s *authService) oauthRegister(ctx context.Context, payload dto.OAuthPayloa
 	var token string
 	err := s.txManager.Do(ctx, func(ctx context.Context) error {
 		// create new user
-		user, err := s.users.Create(ctx, domain.User{
+		user, err := s.users.Create(ctx, dto.CreateUserDto{
 			Email:           payload.Email,
-			FullName:        payload.FullName,
-			AvatarUrl:       payload.AvatarUrl,
 			Provider:        domain.UserProvider(payload.Provider),
 			IsEmailVerified: true,
 		})
@@ -96,7 +95,14 @@ func (s *authService) oauthRegister(ctx context.Context, payload dto.OAuthPayloa
 		}
 
 		// send user registered event
-		if err := s.producer.PublishUserRegistered(ctx, user.ID); err != nil {
+		event := events.EventUserRegistered{
+			UserID:    user.ID,
+			Email:     user.Email,
+			Provider:  string(user.Provider),
+			AvatarURL: payload.AvatarUrl,
+			FullName:  payload.FullName,
+		}
+		if err := s.producer.PublishUserRegistered(ctx, event); err != nil {
 			return fmt.Errorf("failed to publish user registered event: %w", err)
 		}
 
@@ -143,7 +149,13 @@ func (c *authService) GenerateOTP(ctx context.Context, email string) error {
 		}
 
 		// send otp
-		if err := c.producer.PublishOTPGenerated(ctx, otp.UserID, otp.Code); err != nil {
+		event := events.EventOTPGenerated{
+			UserID:    user.ID,
+			Email:     user.Email,
+			Code:      otp.Code,
+			ExpiresAt: otp.ExpiresAt,
+		}
+		if err := c.producer.PublishOTPGenerated(ctx, event); err != nil {
 			return fmt.Errorf("failed to publish OTP generated event: %w", err)
 		}
 
@@ -155,7 +167,7 @@ func (c *authService) GenerateOTP(ctx context.Context, email string) error {
 func (c *authService) emailRegister(ctx context.Context, email string) error {
 	return c.txManager.Do(ctx, func(ctx context.Context) error {
 		// add user
-		user, err := c.users.Create(ctx, domain.User{
+		user, err := c.users.Create(ctx, dto.CreateUserDto{
 			Email:           email,
 			Provider:        domain.UserProviderEmail,
 			IsEmailVerified: false,
@@ -171,7 +183,13 @@ func (c *authService) emailRegister(ctx context.Context, email string) error {
 		}
 
 		// send otp
-		if err := c.producer.PublishOTPGenerated(ctx, otp.UserID, otp.Code); err != nil {
+		event := events.EventOTPGenerated{
+			UserID:    user.ID,
+			Email:     user.Email,
+			Code:      otp.Code,
+			ExpiresAt: otp.ExpiresAt,
+		}
+		if err := c.producer.PublishOTPGenerated(ctx, event); err != nil {
 			return fmt.Errorf("failed to publish OTP generated event: %w", err)
 		}
 
@@ -213,12 +231,17 @@ func (s *authService) VerifyOTP(ctx context.Context, email, code string) (string
 			return fmt.Errorf("failed to sign token: %w", err)
 		}
 
-		// notify user if email is not verified
+		// notify user and add profile info if email is not verified
 		if !user.IsEmailVerified {
 			if err := s.users.MarkEmailVerified(ctx, user.ID); err != nil {
 				return fmt.Errorf("failed to mark email as verified: %w", err)
 			}
-			if err := s.producer.PublishUserRegistered(ctx, user.ID); err != nil {
+			event := events.EventUserRegistered{
+				UserID:   user.ID,
+				Email:    user.Email,
+				Provider: string(user.Provider),
+			}
+			if err := s.producer.PublishUserRegistered(ctx, event); err != nil {
 				return fmt.Errorf("failed to publish user registered event: %w", err)
 			}
 		}

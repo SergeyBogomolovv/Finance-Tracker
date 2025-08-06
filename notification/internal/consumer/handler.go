@@ -9,16 +9,16 @@ import (
 	kafka "github.com/segmentio/kafka-go"
 )
 
-type NotificationService interface {
-	SendOTP(ctx context.Context, userID int, code string) error
-	SendRegistered(ctx context.Context, userID int) error
+type MailService interface {
+	SendOTP(ctx context.Context, email, code string) error
+	SendRegistered(ctx context.Context, email, name string) error
 }
 
 type handler struct {
-	svc NotificationService
+	svc MailService
 }
 
-func NewHandler(svc NotificationService) *handler {
+func NewHandler(svc MailService) *handler {
 	return &handler{svc: svc}
 }
 
@@ -28,7 +28,7 @@ func (h *handler) OTPGenerated(ctx context.Context, m kafka.Message) error {
 		return fmt.Errorf("failed to decode message: %w", err)
 	}
 
-	return h.svc.SendOTP(ctx, event.UserID, event.Code)
+	return h.svc.SendOTP(ctx, event.Email, event.Code)
 }
 
 func (h *handler) UserRegistered(ctx context.Context, m kafka.Message) error {
@@ -37,7 +37,7 @@ func (h *handler) UserRegistered(ctx context.Context, m kafka.Message) error {
 		return fmt.Errorf("failed to decode message: %w", err)
 	}
 
-	return h.svc.SendRegistered(ctx, event.UserID)
+	return h.svc.SendRegistered(ctx, event.Email, event.FullName)
 }
 
 func decodeMessage(m kafka.Message, event any) error {

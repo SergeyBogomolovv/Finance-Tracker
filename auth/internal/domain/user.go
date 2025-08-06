@@ -15,8 +15,6 @@ type User struct {
 	Email           string
 	Provider        UserProvider
 	IsEmailVerified bool
-	AvatarUrl       string
-	FullName        string
 }
 
 var (

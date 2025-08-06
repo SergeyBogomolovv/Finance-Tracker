@@ -12,8 +12,7 @@ type Config struct {
 	KafkaGroupID string
 	KafkaBrokers []string
 
-	SMTP        SMTP
-	PostgresURL string
+	SMTP SMTP
 }
 
 type SMTP struct {
@@ -28,7 +27,6 @@ func New() *Config {
 		Env:          env("ENV", "development"),
 		KafkaGroupID: env("KAFKA_GROUP_ID", "notification-service"),
 		KafkaBrokers: envArray("KAFKA_BROKERS", "localhost:9092"),
-		PostgresURL:  env("POSTGRES_URL"),
 		SMTP: SMTP{
 			Host: env("SMTP_HOST"),
 			Port: envInt("SMTP_PORT"),

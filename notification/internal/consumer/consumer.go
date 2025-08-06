@@ -62,7 +62,6 @@ func (r *consumer) Consume(ctx context.Context) {
 		if err := r.reader.CommitMessages(ctx, m); err != nil {
 			logger.Error(ctx, "failed to commit message", "err", err)
 		}
-		logger.Debug(ctx, "message consumed", "topic", m.Topic, "partition", m.Partition, "offset", m.Offset)
 	}
 }
 

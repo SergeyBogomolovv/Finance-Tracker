@@ -9,7 +9,7 @@ type controller struct {
 	consumers []Consumer
 }
 
-func New(brokers []string, groupID string, svc NotificationService) *controller {
+func New(brokers []string, groupID string, svc MailService) *controller {
 	factory := NewConsumerFactory(brokers, groupID)
 	handler := NewHandler(svc)
 

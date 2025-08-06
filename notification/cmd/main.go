@@ -3,11 +3,8 @@ package main
 import (
 	"FinanceTracker/notification/internal/config"
 	"FinanceTracker/notification/internal/consumer"
-	"FinanceTracker/notification/internal/mailer"
-	"FinanceTracker/notification/internal/repo"
 	"FinanceTracker/notification/internal/service"
 	"FinanceTracker/notification/pkg/logger"
-	"FinanceTracker/notification/pkg/postgres"
 
 	"context"
 	"os/signal"
@@ -20,14 +17,8 @@ func main() {
 	conf := config.New()
 	log := logger.New(conf.Env)
 
-	postgres := postgres.MustNew(conf.PostgresURL)
-	defer postgres.Close()
-	log.Info("postgres connected")
-
-	mailer := mailer.New(conf.SMTP)
-	userRepo := repo.NewUserRepo(postgres)
-	notificationService := service.NewNotificationService(userRepo, mailer)
-	consumer := consumer.New(conf.KafkaBrokers, conf.KafkaGroupID, notificationService)
+	mailService := service.NewMailService(conf.SMTP)
+	consumer := consumer.New(conf.KafkaBrokers, conf.KafkaGroupID, mailService)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()

@@ -94,6 +94,9 @@ func (c *authController) ExchangeGoogleOAuth(ctx context.Context, req *pb.OAuthR
 		AvatarUrl: data.Picture,
 		Provider:  dto.OAuthProviderGoogle,
 	})
+	if errors.Is(err, domain.ErrProviderMismatch) {
+		return nil, status.Error(codes.InvalidArgument, "invalid provider")
+	}
 	if err != nil {
 		logger.Error(ctx, "failed to oauth user", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to oauth user")
@@ -133,6 +136,9 @@ func (c *authController) ExchangeYandexOAuth(ctx context.Context, req *pb.OAuthR
 		AvatarUrl: fmt.Sprintf("https://avatars.yandex.net/get-yapic/%s/islands-200", data.AvatarID),
 		Provider:  dto.OAuthProviderYandex,
 	})
+	if errors.Is(err, domain.ErrProviderMismatch) {
+		return nil, status.Error(codes.InvalidArgument, "invalid provider")
+	}
 	if err != nil {
 		logger.Error(ctx, "failed to oauth user", "err", err)
 		return nil, status.Error(codes.Unauthenticated, "failed to oauth user")

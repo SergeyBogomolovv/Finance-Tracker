@@ -45,7 +45,7 @@ func NewAuthController(authService pb.AuthServiceClient, oauthConf config.OAuth)
 			Endpoint:    yandex.Endpoint,
 		},
 		redirectURL: oauthConf.ClientRedirectURL,
-		failureUrl:  fmt.Sprintf("%s/login?error=oauth_failed", oauthConf.RedirectURL),
+		failureUrl:  fmt.Sprintf("%s/login?error=oauth_failed", oauthConf.ClientRedirectURL),
 		authService: authService,
 		validate:    validator.New(),
 	}
