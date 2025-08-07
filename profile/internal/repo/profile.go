@@ -17,17 +17,17 @@ type User struct {
 	Email     string         `db:"email"`
 	Provider  string         `db:"provider"`
 	FullName  sql.NullString `db:"full_name"`
-	AvatarUrl sql.NullString `db:"avatar_url"`
+	AvatarID  sql.NullString `db:"avatar_id"`
 	CreatedAt time.Time      `db:"created_at"`
 }
 
 func (u User) ToProfile() domain.Profile {
 	return domain.Profile{
-		UserID:    u.ID,
-		Email:     u.Email,
-		Provider:  u.Provider,
-		AvatarUrl: u.AvatarUrl.String,
-		FullName:  u.FullName.String,
+		UserID:   u.ID,
+		Email:    u.Email,
+		Provider: u.Provider,
+		AvatarID: u.AvatarID.String,
+		FullName: u.FullName.String,
 	}
 }
 
@@ -45,7 +45,7 @@ func NewUserRepo(storage *sqlx.DB) *userRepo {
 }
 
 func (r *userRepo) GetProfileByID(ctx context.Context, userID int) (domain.Profile, error) {
-	query, args := r.qb.Select("user_id", "email", "provider", "full_name", "avatar_url", "created_at").
+	query, args := r.qb.Select("user_id", "email", "provider", "full_name", "avatar_id", "created_at").
 		From("users").
 		Where(sq.Eq{"user_id": userID}).
 		MustSql()
@@ -60,6 +60,37 @@ func (r *userRepo) GetProfileByID(ctx context.Context, userID int) (domain.Profi
 	}
 
 	return user.ToProfile(), nil
+}
+
+func (r *userRepo) Update(ctx context.Context, user domain.Profile) error {
+	m := make(map[string]any)
+	if user.FullName != "" {
+		m["full_name"] = user.FullName
+	}
+	if user.AvatarID != "" {
+		m["avatar_id"] = user.AvatarID
+	}
+	query, args := r.qb.Update("users").SetMap(m).Where(sq.Eq{"user_id": user.UserID}).MustSql()
+	res, err := r.execContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	aff, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff == 0 {
+		return domain.ErrProfileNotFound
+	}
+	return nil
+}
+
+func (r *userRepo) execContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	tx := transaction.ExtractTx(ctx)
+	if tx != nil {
+		return tx.ExecContext(ctx, query, args...)
+	}
+	return r.storage.ExecContext(ctx, query, args...)
 }
 
 func (r *userRepo) getContext(ctx context.Context, dest any, query string, args ...any) error {

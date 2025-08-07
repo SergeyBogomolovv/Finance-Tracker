@@ -3,11 +3,11 @@ package domain
 import "errors"
 
 type Profile struct {
-	UserID    int
-	Email     string
-	Provider  string
-	AvatarUrl string
-	FullName  string
+	UserID   int
+	Email    string
+	Provider string
+	AvatarID string
+	FullName string
 }
 
 var (

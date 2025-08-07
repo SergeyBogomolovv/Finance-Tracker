@@ -17,8 +17,6 @@ import { FcGoogle } from 'react-icons/fc'
 import { FaYandex } from 'react-icons/fa'
 import { API_URL } from '@/shared/constants'
 import { useRouter } from 'next/navigation'
-import { sendOTP } from '../api/send-otp'
-import { verifyOTP } from '../api/verify-otp'
 
 export function AuthForm() {
   const [email, setEmail] = useState('')
@@ -28,18 +26,45 @@ export function AuthForm() {
 
   const sendCode = async (email: string) => {
     setLoading(true)
-    await sendOTP(email)
-    addToast({ title: 'Код отправлен' })
-    setCodeSent(true)
+    const res = await fetch(`${API_URL}/auth/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    })
+    if (res.ok) {
+      addToast({ title: 'Код отправлен вам на почту' })
+      setCodeSent(true)
+    } else if (res.status === 400) {
+      addToast({ title: 'Попробуйте войти другим способом' })
+    } else if (res.status === 429) {
+      addToast({ title: 'Попробуйте позже' })
+    } else {
+      addToast({ title: 'Что-то пошло не так' })
+    }
     setLoading(false)
   }
 
   const emailAuth = async (otp: string) => {
     setLoading(true)
-    await verifyOTP(email, otp)
-    addToast({ title: 'Аутентификация прошла' })
+    const res = await fetch(`${API_URL}/auth/email/verify`, {
+      credentials: 'include',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, otp }),
+    })
+
+    if (res.ok) {
+      router.refresh()
+    } else if (res.status === 401) {
+      addToast({ title: 'Неверный код' })
+    } else {
+      addToast({ title: 'Что-то пошло не так' })
+    }
     setLoading(false)
-    router.refresh()
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {

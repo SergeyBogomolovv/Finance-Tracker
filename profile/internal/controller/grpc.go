@@ -33,7 +33,7 @@ func (c *profileController) Register(server *grpc.Server) {
 	pb.RegisterProfileServiceServer(server, c)
 }
 
-func (c *profileController) GetProfile(ctx context.Context, req *pb.GetProfileRequest) (*pb.ProfileResponse, error) {
+func (c *profileController) GetProfile(ctx context.Context, req *pb.GetProfileRequest) (*pb.Profile, error) {
 	profile, err := c.svc.GetProfileInfo(ctx, int(req.UserId))
 	if errors.Is(err, domain.ErrProfileNotFound) {
 		return nil, status.Errorf(codes.NotFound, "profile not found for user ID %d", req.UserId)
@@ -42,11 +42,11 @@ func (c *profileController) GetProfile(ctx context.Context, req *pb.GetProfileRe
 		return nil, status.Errorf(codes.Internal, "failed to get profile for user ID %d: %v", req.UserId, err)
 	}
 
-	return &pb.ProfileResponse{
-		UserId:    int64(profile.UserID),
-		Email:     profile.Email,
-		Provider:  profile.Provider,
-		AvatarUrl: profile.AvatarUrl,
-		FullName:  profile.FullName,
+	return &pb.Profile{
+		UserId:   int64(profile.UserID),
+		Email:    profile.Email,
+		Provider: profile.Provider,
+		AvatarId: profile.AvatarID,
+		FullName: profile.FullName,
 	}, nil
 }

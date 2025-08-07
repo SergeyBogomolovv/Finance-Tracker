@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE NOT NULL,
     provider user_provider NOT NULL,
     is_email_verified BOOLEAN DEFAULT FALSE,
-    avatar_url TEXT,
+    avatar_id TEXT,
     full_name TEXT,
     created_at TIMESTAMP DEFAULT now()
 );

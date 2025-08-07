@@ -267,7 +267,7 @@ const docTemplate = `{
         "controller.ProfileResponse": {
             "type": "object",
             "properties": {
-                "avatar_url": {
+                "avatar_id": {
                     "type": "string"
                 },
                 "email": {

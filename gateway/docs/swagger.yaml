@@ -8,7 +8,7 @@ definitions:
     type: object
   controller.ProfileResponse:
     properties:
-      avatar_url:
+      avatar_id:
         type: string
       email:
         type: string

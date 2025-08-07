@@ -30,20 +30,20 @@ func (c *profileController) Init(r *http.ServeMux) {
 }
 
 type ProfileResponse struct {
-	UserID    int64  `json:"user_id"`
-	Email     string `json:"email"`
-	Provider  string `json:"provider"`
-	FullName  string `json:"full_name,omitempty"`
-	AvatarURL string `json:"avatar_url,omitempty"`
+	UserID   int64  `json:"user_id"`
+	Email    string `json:"email"`
+	Provider string `json:"provider"`
+	FullName string `json:"full_name,omitempty"`
+	AvatarID string `json:"avatar_id,omitempty"`
 }
 
-func protoToProfileResponse(resp *pb.ProfileResponse) ProfileResponse {
+func protoToProfileResponse(resp *pb.Profile) ProfileResponse {
 	return ProfileResponse{
-		UserID:    resp.UserId,
-		Email:     resp.Email,
-		Provider:  resp.Provider,
-		FullName:  resp.FullName,
-		AvatarURL: resp.AvatarUrl,
+		UserID:   resp.UserId,
+		Email:    resp.Email,
+		Provider: resp.Provider,
+		FullName: resp.FullName,
+		AvatarID: resp.AvatarId,
 	}
 }
 
