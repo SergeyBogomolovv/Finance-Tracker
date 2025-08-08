@@ -1,0 +1,11 @@
+dir: '{{.InterfaceDir}}/mocks'
+filename: '{{.InterfaceName}}.go'
+packages:
+  FinanceTracker/auth/internal/service:
+    interfaces:
+      OTPRepo:
+      UserRepo:
+      Producer:
+  FinanceTracker/auth/pkg/transaction:
+    interfaces:
+      Manager:
