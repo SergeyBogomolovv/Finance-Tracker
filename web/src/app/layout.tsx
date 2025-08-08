@@ -4,7 +4,7 @@ import { Providers } from './providers'
 import { Header } from '@/widgets/header'
 import Image from 'next/image'
 import './globals.css'
-import { checkAuth } from '@/shared/utils/auth'
+import { fetchCurrentUser } from '@/entities/profile'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -26,7 +26,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const isAuth = await checkAuth()
+  const profile = await fetchCurrentUser()
+
   return (
     <html lang='ru' className='dark'>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
@@ -40,7 +41,7 @@ export default async function RootLayout({
                 className='blur-sm brightness-60 object-center object-cover'
               />
             </div>
-            <Header isAuthenticated={isAuth} />
+            <Header profile={profile} />
             {children}
           </div>
         </Providers>

@@ -1,7 +1,8 @@
-CREATE TABLE IF NOT EXISTS otps (
-    user_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS email_otps (
+    otp_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email TEXT NOT NULL,
     code CHAR(6) NOT NULL,
-    created_at TIMESTAMP DEFAULT now(),
-    expires_at TIMESTAMP NOT NULL,
-    PRIMARY KEY (user_id, code)
+    created_at TIMESTAMPTZ DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    is_used BOOLEAN DEFAULT FALSE
 );

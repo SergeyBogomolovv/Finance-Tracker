@@ -18,7 +18,11 @@ import { FaYandex } from 'react-icons/fa'
 import { API_URL } from '@/shared/constants'
 import { useRouter } from 'next/navigation'
 
-export function AuthForm() {
+type Props = {
+  error?: string
+}
+
+export function AuthForm({ error }: Props) {
   const [email, setEmail] = useState('')
   const [isCodeSent, setCodeSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -120,6 +124,12 @@ export function AuthForm() {
       <Divider />
 
       <CardFooter className='flex flex-col gap-3 items-center'>
+        {error && (
+          <div className='bg-red-600 opacity-60 text-sm p-2 rounded-lg w-full text-center text-white'>
+            {error === 'oauth_failed' ? 'Попробуйте войти другим способом' : error}
+          </div>
+        )}
+
         <Button
           className='w-full'
           as={Link}

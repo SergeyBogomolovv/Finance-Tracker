@@ -2,8 +2,6 @@ package domain
 
 import "errors"
 
-type UserProvider string
-
 const (
 	UserProviderEmail  = "email"
 	UserProviderGoogle = "google"
@@ -11,10 +9,9 @@ const (
 )
 
 type User struct {
-	ID              int
-	Email           string
-	Provider        UserProvider
-	IsEmailVerified bool
+	ID       int
+	Email    string
+	Provider string
 }
 
 var (

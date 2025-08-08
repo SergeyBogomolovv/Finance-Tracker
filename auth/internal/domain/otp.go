@@ -6,12 +6,14 @@ import (
 )
 
 type OTP struct {
-	UserID    int
+	ID        int
+	Email     string
 	Code      string
 	CreatedAt time.Time
 	ExpiresAt time.Time
 }
 
 var (
-	ErrInvalidOTP = errors.New("invalid OTP")
+	ErrInvalidOTP  = errors.New("invalid OTP")
+	ErrOTPNotFound = errors.New("OTP not found")
 )

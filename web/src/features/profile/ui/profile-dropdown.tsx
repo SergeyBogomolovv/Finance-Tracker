@@ -1,10 +1,16 @@
 'use client'
+import { Profile } from '@/entities/profile'
 import { logout } from '@/features/auth'
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/dropdown'
 import { User } from '@heroui/user'
 import { useRouter } from 'next/navigation'
+import { S3_BASE_URL } from '@/shared/constants'
 
-export function ProfileDropdown() {
+type Props = {
+  profile: Profile
+}
+
+export function ProfileDropdown({ profile }: Props) {
   const router = useRouter()
   return (
     <Dropdown>
@@ -12,11 +18,11 @@ export function ProfileDropdown() {
         <User
           as='button'
           avatarProps={{
-            src: '/icons/yandex_plus.png',
+            src: `${S3_BASE_URL}/avatars/${profile.avatar_id}`,
           }}
           className='transition-transform cursor-pointer'
-          description='bogomolovs693@gmail.com'
-          name='Sergey Bogomolov'
+          description={profile.email}
+          name={profile.full_name || 'Unknown'}
         />
       </DropdownTrigger>
       <DropdownMenu aria-label='Static Actions'>

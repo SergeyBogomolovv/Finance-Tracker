@@ -1,4 +1,5 @@
 'use client'
+import { Profile } from '@/entities/profile'
 import { ProfileDropdown } from '@/features/profile'
 import {
   Navbar,
@@ -14,10 +15,10 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 
 type Props = {
-  isAuthenticated: boolean
+  profile: Profile | null
 }
 
-export function Header({ isAuthenticated }: Props) {
+export function Header({ profile }: Props) {
   const pathname = usePathname()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
@@ -49,8 +50,8 @@ export function Header({ isAuthenticated }: Props) {
       </NavbarContent>
 
       <NavbarContent justify='end'>
-        {isAuthenticated ? (
-          <ProfileDropdown />
+        {profile ? (
+          <ProfileDropdown profile={profile} />
         ) : (
           <NavbarItem>
             <Button as={Link} color='primary' href='/login' variant='flat'>

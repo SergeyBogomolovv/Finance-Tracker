@@ -1,9 +1,14 @@
 import { AuthForm } from '@/features/auth'
 
-export default function LoginPage() {
+type Props = {
+  searchParams: Promise<{ error?: string }>
+}
+
+export default async function LoginPage({ searchParams }: Props) {
+  const error = (await searchParams).error
   return (
     <main className='flex-1 flex items-center justify-center'>
-      <AuthForm />
+      <AuthForm error={error} />
     </main>
   )
 }

@@ -1,15 +1,13 @@
 package dto
 
-type OAuthProvider string
-
 const (
-	OAuthProviderGoogle OAuthProvider = "google"
-	OAuthProviderYandex OAuthProvider = "yandex"
+	OAuthProviderGoogle = "google"
+	OAuthProviderYandex = "yandex"
 )
 
 type OAuthPayload struct {
 	Email     string
 	FullName  string
 	AvatarUrl string
-	Provider  OAuthProvider
+	Provider  string
 }

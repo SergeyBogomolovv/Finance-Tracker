@@ -16,10 +16,12 @@ import (
 )
 
 type OTP struct {
-	UserID    int       `db:"user_id"`
+	ID        int       `db:"otp_id"`
+	Email     string    `db:"email"`
 	Code      string    `db:"code"`
 	CreatedAt time.Time `db:"created_at"`
 	ExpiresAt time.Time `db:"expires_at"`
+	IsUsed    bool      `db:"is_used"`
 }
 
 type otpRepo struct {
@@ -34,42 +36,41 @@ func NewOTPRepo(storage *sqlx.DB) *otpRepo {
 	}
 }
 
-func (r *otpRepo) Generate(ctx context.Context, userID int) (domain.OTP, error) {
+func (r *otpRepo) Generate(ctx context.Context, email string, duration time.Duration) (domain.OTP, error) {
 	code, err := generateCode()
 	if err != nil {
 		return domain.OTP{}, fmt.Errorf("failed to generate OTP code: %w", err)
 	}
 
-	otp := OTP{
-		UserID:    userID,
-		Code:      code,
-		CreatedAt: time.Now(),
-		ExpiresAt: time.Now().Add(5 * time.Minute), // OTP valid for 5 minutes
-	}
-
-	query, args := r.qb.Insert("otps").
-		Columns("user_id", "code", "created_at", "expires_at").
-		Values(otp.UserID, otp.Code, otp.CreatedAt, otp.ExpiresAt).
-		Suffix("RETURNING *").MustSql()
+	var otp OTP
+	query, args := r.qb.
+		Insert("email_otps").
+		Columns("email", "code", "created_at", "expires_at").
+		Values(email, code, time.Now(), time.Now().Add(duration)).
+		Suffix("RETURNING otp_id, email, code, created_at, expires_at").
+		MustSql()
 
 	if err := r.getContext(ctx, &otp, query, args...); err != nil {
 		return domain.OTP{}, fmt.Errorf("failed to insert OTP: %w", err)
 	}
 
 	return domain.OTP{
-		UserID:    otp.UserID,
+		ID:        otp.ID,
+		Email:     otp.Email,
 		Code:      otp.Code,
 		CreatedAt: otp.CreatedAt,
 		ExpiresAt: otp.ExpiresAt,
 	}, nil
 }
 
-func (r *otpRepo) Validate(ctx context.Context, userID int, code string) (bool, error) {
-	query, args := r.qb.Select("TRUE").
-		From("otps").
-		Where(sq.Eq{"user_id": userID, "code": code}).
-		Where("expires_at > NOW()").
+func (r *otpRepo) Verify(ctx context.Context, email, code string) (bool, error) {
+	query, args := r.qb.
+		Select("TRUE").
+		From("email_otps").
+		Where(sq.Eq{"email": email, "code": code, "is_used": false}).
+		Where(sq.Gt{"expires_at": time.Now()}).
 		MustSql()
+
 	var valid bool
 	if err := r.getContext(ctx, &valid, query, args...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -80,13 +81,31 @@ func (r *otpRepo) Validate(ctx context.Context, userID int, code string) (bool, 
 	return true, nil
 }
 
-func (r *otpRepo) DeleteAll(ctx context.Context, userID int) error {
-	query, args := r.qb.Delete("otps").
-		Where(sq.Eq{"user_id": userID}).
+func (r *otpRepo) MarkUsed(ctx context.Context, email, code string) error {
+	query, args := r.qb.
+		Update("email_otps").
+		Set("is_used", true).
+		Where(sq.Eq{"email": email, "code": code}).
 		MustSql()
 
-	return r.execContext(ctx, query, args...)
+	aff, err := r.execContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	if aff == 0 {
+		return domain.ErrOTPNotFound
+	}
+	return nil
 }
+
+// func (r *otpRepo) DeleteAll(ctx context.Context, userID int) error {
+// 	query, args := r.qb.Delete("otps").
+// 		Where(sq.Eq{"user_id": userID}).
+// 		MustSql()
+
+// 	_, err := r.execContext(ctx, query, args...)
+// 	return err
+// }
 
 func generateCode() (string, error) {
 	max := big.NewInt(1000000)
@@ -97,14 +116,22 @@ func generateCode() (string, error) {
 	return fmt.Sprintf("%06d", n.Int64()), nil
 }
 
-func (r *otpRepo) execContext(ctx context.Context, query string, args ...any) error {
+func (r *otpRepo) execContext(ctx context.Context, query string, args ...any) (int64, error) {
 	tx := transaction.ExtractTx(ctx)
 	if tx != nil {
-		_, err := tx.ExecContext(ctx, query, args...)
-		return err
+		res, err := tx.ExecContext(ctx, query, args...)
+		if err != nil {
+			return 0, err
+		}
+		return res.RowsAffected()
 	}
-	_, err := r.storage.ExecContext(ctx, query, args...)
-	return err
+
+	res, err := r.storage.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.RowsAffected()
 }
 
 func (r *otpRepo) getContext(ctx context.Context, dest any, query string, args ...any) error {
