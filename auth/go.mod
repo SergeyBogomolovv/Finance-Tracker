@@ -1,6 +1,6 @@
 module FinanceTracker/auth
 
-go 1.24.5
+go 1.24.6
 
 require (
 	github.com/Masterminds/squirrel v1.5.4

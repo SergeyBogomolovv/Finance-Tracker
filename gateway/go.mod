@@ -1,6 +1,6 @@
 module FinanceTracker/gateway
 
-go 1.24.5
+go 1.24.6
 
 require (
 	github.com/go-playground/validator/v10 v10.26.0
