@@ -1,0 +1,10 @@
+dir: '{{.InterfaceDir}}/mocks'
+filename: '{{.InterfaceName}}.go'
+packages:
+  FinanceTracker/profile/internal/service:
+    interfaces:
+      AvatarRepo:
+      UserRepo:
+  FinanceTracker/profile/pkg/transaction:
+    interfaces:
+      Manager:
