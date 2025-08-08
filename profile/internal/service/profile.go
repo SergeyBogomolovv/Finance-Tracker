@@ -74,7 +74,7 @@ func (s *profileService) InitializeUserProfile(ctx context.Context, data events.
 			}
 		}
 
-		logger.Info(ctx, "profile initialized", "user_id", data.UserID, "full_name", user.FullName, "avatar_id", user.AvatarID)
+		logger.Debug(ctx, "profile initialized", "user_id", data.UserID, "full_name", user.FullName, "avatar_id", user.AvatarID)
 		return nil
 	})
 }

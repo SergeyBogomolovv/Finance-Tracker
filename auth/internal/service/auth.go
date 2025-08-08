@@ -76,6 +76,7 @@ func (s *authService) OAuth(ctx context.Context, payload dto.OAuthPayload) (stri
 			if err := s.producer.PublishUserRegistered(ctx, event); err != nil {
 				return fmt.Errorf("failed to publish user registered event: %w", err)
 			}
+			logger.Debug(ctx, "user registered", "id", user.ID, "email", user.Email, "provider", user.Provider)
 			// unknown get user error
 		} else if err != nil {
 			return fmt.Errorf("failed to get user: %w", err)
@@ -86,7 +87,11 @@ func (s *authService) OAuth(ctx context.Context, payload dto.OAuthPayload) (stri
 
 		// sign JWT token
 		token, err = signToken(user.ID, s.jwtKey, s.jwtTTL)
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to sign token: %w", err)
+		}
+		logger.Debug(ctx, "user logined", "id", user.ID, "email", user.Email, "provider", user.Provider)
+		return nil
 	})
 
 	return token, err
@@ -163,6 +168,7 @@ func (s *authService) VerifyOTP(ctx context.Context, email, code string) (string
 			if err := s.producer.PublishUserRegistered(ctx, event); err != nil {
 				return fmt.Errorf("failed to publish user registered event: %w", err)
 			}
+			logger.Debug(ctx, "user registered", "id", user.ID, "email", user.Email, "provider", user.Provider)
 		} else if err != nil {
 			return fmt.Errorf("failed to get user: %w", err)
 		}
@@ -172,7 +178,11 @@ func (s *authService) VerifyOTP(ctx context.Context, email, code string) (string
 		}
 		// sign jwt token
 		token, err = signToken(user.ID, s.jwtKey, s.jwtTTL)
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to sign token: %w", err)
+		}
+		logger.Debug(ctx, "user logined", "id", user.ID, "email", user.Email, "provider", user.Provider)
+		return nil
 	})
 
 	return token, err
