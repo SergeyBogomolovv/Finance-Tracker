@@ -91,7 +91,7 @@ func (s *profileService) UpdateProfile(ctx context.Context, userID int, dto doma
 		profile.FullName = *dto.FullName
 	}
 
-	if dto.AvatarBytes != nil {
+	if len(dto.AvatarBytes) > 0 {
 		profile.AvatarID = fmt.Sprintf("%d.jpg", userID)
 	}
 
@@ -101,7 +101,7 @@ func (s *profileService) UpdateProfile(ctx context.Context, userID int, dto doma
 		}
 
 		// если упадет загрузка, то транзакция отменится
-		if dto.AvatarBytes != nil {
+		if len(dto.AvatarBytes) > 0 {
 			if err := s.avatarRepo.Upload(ctx, profile.AvatarID, bytes.NewReader(dto.AvatarBytes)); err != nil {
 				return err
 			}

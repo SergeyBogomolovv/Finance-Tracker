@@ -5,10 +5,11 @@ type Props = {
 }
 
 export default async function LoginPage({ searchParams }: Props) {
-  const error = (await searchParams).error
+  const params = await searchParams
+
   return (
     <main className='flex-1 flex items-center justify-center'>
-      <AuthForm error={error} />
+      <AuthForm error={params.error} />
     </main>
   )
 }

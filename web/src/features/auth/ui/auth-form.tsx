@@ -16,7 +16,8 @@ import Link from 'next/link'
 import { FcGoogle } from 'react-icons/fc'
 import { FaYandex } from 'react-icons/fa'
 import { API_URL } from '@/shared/constants'
-import { useRouter } from 'next/navigation'
+import { requestEmailCode, verifyEmailCode } from '@/features/auth/api/email'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 type Props = {
   error?: string
@@ -27,48 +28,65 @@ export function AuthForm({ error }: Props) {
   const [isCodeSent, setCodeSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
-  const sendCode = async (email: string) => {
+  const clearErrorQueryParam = () => {
+    if (!searchParams) return
+    if (!searchParams.has('error')) return
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete('error')
+    const query = next.toString()
+    const href = query ? `${pathname}?${query}` : pathname
+    router.replace(href)
+  }
+
+  const sendCode = async (emailToSend: string) => {
     setLoading(true)
-    const res = await fetch(`${API_URL}/auth/email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    })
-    if (res.ok) {
-      addToast({ title: 'Код отправлен вам на почту' })
-      setCodeSent(true)
-    } else if (res.status === 400) {
-      addToast({ title: 'Попробуйте войти другим способом' })
-    } else if (res.status === 429) {
-      addToast({ title: 'Попробуйте позже' })
-    } else {
-      addToast({ title: 'Что-то пошло не так' })
+    try {
+      const response = await requestEmailCode(emailToSend)
+
+      if (response.ok) {
+        clearErrorQueryParam()
+        addToast({ title: 'Код отправлен вам на почту' })
+        setCodeSent(true)
+        return
+      }
+
+      if (response.status === 400) {
+        addToast({ title: 'Попробуйте войти другим способом', color: 'danger' })
+        return
+      }
+      if (response.status === 429) {
+        addToast({ title: 'Превышен лимит. Попробуйте позже', color: 'danger' })
+        return
+      }
+      addToast({ title: 'Что-то пошло не так', color: 'danger' })
+    } catch {
+      addToast({ title: 'Нет соединения. Проверьте сеть', color: 'danger' })
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const emailAuth = async (otp: string) => {
     setLoading(true)
-    const res = await fetch(`${API_URL}/auth/email/verify`, {
-      credentials: 'include',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, otp }),
-    })
-
-    if (res.ok) {
-      router.refresh()
-    } else if (res.status === 401) {
-      addToast({ title: 'Неверный код' })
-    } else {
+    try {
+      const response = await verifyEmailCode(email, otp)
+      if (response.ok) {
+        router.refresh()
+        return
+      }
+      if (response.status === 401) {
+        addToast({ title: 'Неверный код' })
+        return
+      }
       addToast({ title: 'Что-то пошло не так' })
+    } catch {
+      addToast({ title: 'Нет соединения. Проверьте сеть' })
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -77,10 +95,11 @@ export function AuthForm({ error }: Props) {
     const data = Object.fromEntries(formData)
 
     if (!isCodeSent) {
-      setEmail(data.email as string)
-      await sendCode(data.email as string)
+      const emailFromForm = data.email as string
+      setEmail(emailFromForm)
+      await sendCode(emailFromForm)
     } else {
-      await emailAuth(data.otp as string)
+      await emailAuth((data.otp as string) || '')
     }
   }
 
@@ -108,6 +127,7 @@ export function AuthForm({ error }: Props) {
             <InputOtp
               description='Введите код из письма'
               autoFocus
+              isRequired
               length={6}
               name='otp'
               size='md'

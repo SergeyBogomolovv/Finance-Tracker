@@ -21,6 +21,10 @@ export function ProfileDropdown({ profile }: Props) {
             src: `${S3_BASE_URL}/avatars/${profile.avatar_id}`,
           }}
           className='transition-transform cursor-pointer'
+          classNames={{
+            name: 'hidden md:inline',
+            description: 'hidden md:inline',
+          }}
           description={profile.email}
           name={profile.full_name || 'Unknown'}
         />

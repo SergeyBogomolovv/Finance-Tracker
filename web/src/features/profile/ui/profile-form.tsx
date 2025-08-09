@@ -6,18 +6,43 @@ import { Button } from '@heroui/button'
 import type { ChangeEvent, FormEvent } from 'react'
 import { addToast } from '@heroui/react'
 import { useRef, useState } from 'react'
+import { Profile } from '@/entities/profile'
+import { S3_BASE_URL } from '@/shared/constants'
+import { Divider } from '@heroui/divider'
+import { updateProfile } from '../api/update-profile'
+import { useRouter } from 'next/navigation'
+import { logout } from '@/features/auth'
 
-export function ProfileForm() {
+type Props = {
+  profile: Profile
+}
+
+export function ProfileForm({ profile }: Props) {
+  const router = useRouter()
+
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [preview, setPreview] = useState('/icons/yandex_plus.png')
+  const [preview, setPreview] = useState(`${S3_BASE_URL}/avatars/${profile.avatar_id}`)
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const providerLabelMap: Record<string, string> = {
+    google: 'Google',
+    yandex: 'Yandex',
+    email: 'Email',
+  }
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const data = Object.fromEntries(new FormData(e.currentTarget))
-    console.log(data)
-    addToast({
-      title: 'Профиль обновлен',
-    })
+    const formEl = e.currentTarget
+    const formData = new FormData(formEl)
+    updateProfile(formData)
+      .then(() => {
+        addToast({ title: 'Профиль обновлен' })
+      })
+      .catch(() => {
+        addToast({
+          title: 'Возникла непредвиденная ошибка',
+          color: 'danger',
+        })
+      })
   }
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -55,23 +80,35 @@ export function ProfileForm() {
 
       <Input
         name='name'
-        value={'Сергей Богомолов'}
+        defaultValue={profile.full_name ?? ''}
         placeholder='Имя'
         label='Имя'
         labelPlacement='outside'
       />
 
-      <Input
-        name='email'
-        value={'bogomolovs693@email.com'}
-        placeholder='email@email.com'
-        label='Почта'
-        labelPlacement='outside'
-        description='На этот адрес будут приходить уведомления'
-      />
-
-      <Button type='submit' color='primary'>
+      <Button type='submit' color='primary' className='w-full'>
         Сохранить
+      </Button>
+
+      <Divider />
+
+      <div className='flex flex-col gap-2 w-full'>
+        <div className='text-sm text-muted-foreground bg-default-100 rounded-xl p-2.5'>
+          Зарегистрирован через: {providerLabelMap[profile.provider] ?? profile.provider}
+        </div>
+        <div className='text-sm text-muted-foreground bg-default-100 rounded-xl p-2.5'>
+          Почта: {profile.email}
+        </div>
+      </div>
+      <Button
+        type='button'
+        onPress={() => {
+          logout().then(() => router.refresh())
+        }}
+        color='danger'
+        className='w-full'
+      >
+        Выйти
       </Button>
     </Form>
   )

@@ -26,7 +26,7 @@ type authController struct {
 	validate     *validator.Validate
 	googleConfig *oauth2.Config
 	yandexConfig *oauth2.Config
-	redirectURL  string
+	successUrl   string
 	failureUrl   string
 	authService  pb.AuthServiceClient
 }
@@ -44,8 +44,8 @@ func NewAuthController(authService pb.AuthServiceClient, oauthConf config.OAuth)
 			RedirectURL: fmt.Sprintf("%s/auth/yandex/callback", oauthConf.RedirectURL),
 			Endpoint:    yandex.Endpoint,
 		},
-		redirectURL: oauthConf.ClientRedirectURL,
-		failureUrl:  fmt.Sprintf("%s/login?error=oauth_failed", oauthConf.ClientRedirectURL),
+		successUrl:  oauthConf.SuccessURL,
+		failureUrl:  oauthConf.FailureURL,
 		authService: authService,
 		validate:    validator.New(),
 	}
@@ -90,7 +90,7 @@ func (c *authController) handleGoogleCallback(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	if !checkOAuthState(r) {
 		logger.Debug(ctx, "invalid state")
-		http.Redirect(w, r, c.failureUrl, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, fmt.Sprintf("%s?error=oauth_failed", c.failureUrl), http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -98,12 +98,12 @@ func (c *authController) handleGoogleCallback(w http.ResponseWriter, r *http.Req
 	resp, err := c.authService.ExchangeGoogleOAuth(ctx, &pb.OAuthRequest{Code: code})
 	if err != nil {
 		logger.Error(ctx, "failed to exchange google oauth", "err", err)
-		http.Redirect(w, r, c.failureUrl, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, fmt.Sprintf("%s?error=oauth_failed", c.failureUrl), http.StatusTemporaryRedirect)
 		return
 	}
 
 	setAuthTokenToCookie(w, resp.AccessToken)
-	http.Redirect(w, r, c.redirectURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, c.successUrl, http.StatusTemporaryRedirect)
 }
 
 // @Summary		Yandex OAuth вход
@@ -131,7 +131,7 @@ func (c *authController) handleYandexCallback(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	if !checkOAuthState(r) {
 		logger.Debug(ctx, "invalid state")
-		http.Redirect(w, r, c.failureUrl, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, fmt.Sprintf("%s?error=oauth_failed", c.failureUrl), http.StatusTemporaryRedirect)
 		return
 	}
 
@@ -139,12 +139,12 @@ func (c *authController) handleYandexCallback(w http.ResponseWriter, r *http.Req
 	resp, err := c.authService.ExchangeYandexOAuth(ctx, &pb.OAuthRequest{Code: code})
 	if err != nil {
 		logger.Error(ctx, "failed to exchange yandex oauth", "err", err)
-		http.Redirect(w, r, c.failureUrl, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, fmt.Sprintf("%s?error=oauth_failed", c.failureUrl), http.StatusTemporaryRedirect)
 		return
 	}
 
 	setAuthTokenToCookie(w, resp.AccessToken)
-	http.Redirect(w, r, c.redirectURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, c.successUrl, http.StatusTemporaryRedirect)
 }
 
 type EmailAuthRequest struct {

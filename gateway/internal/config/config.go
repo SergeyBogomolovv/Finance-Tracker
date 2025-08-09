@@ -21,10 +21,11 @@ type Config struct {
 }
 
 type OAuth struct {
-	GoogleClientID    string
-	YandexClientID    string
-	RedirectURL       string // backend redirect url
-	ClientRedirectURL string // redirect to browser with cookie
+	GoogleClientID string
+	YandexClientID string
+	RedirectURL    string // backend redirect url
+	FailureURL     string // failure client url
+	SuccessURL     string // success client url
 }
 
 func New() Config {
@@ -34,10 +35,11 @@ func New() Config {
 		Env:       env("ENV", "development"),
 		JwtSecret: []byte(env("JWT_SECRET", "secret")),
 		OAuth: OAuth{
-			RedirectURL:       env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
-			GoogleClientID:    env("GOOGLE_CLIENT_ID"),
-			YandexClientID:    env("YANDEX_CLIENT_ID"),
-			ClientRedirectURL: env("CLIENT_REDIRECT_URL", "http://localhost:3000"),
+			RedirectURL:    env("OAUTH_REDIRECT_URL", "http://localhost:8080"),
+			GoogleClientID: env("GOOGLE_CLIENT_ID"),
+			YandexClientID: env("YANDEX_CLIENT_ID"),
+			FailureURL:     env("OAUTH_FAILURE_URL", "http://localhost:3000/login"),
+			SuccessURL:     env("OAUTH_SUCCESS_URL", "http://localhost:3000/profile"),
 		},
 		AuthServiceAddr:    env("AUTH_SERVICE_ADDR", "localhost:50051"),
 		ProfileServiceAddr: env("PROFILE_SERVICE_ADDR", "localhost:50052"),
