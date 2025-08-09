@@ -13,3 +13,8 @@ type Profile struct {
 var (
 	ErrProfileNotFound = errors.New("profile not found")
 )
+
+type UpdateProfileDto struct {
+	FullName    *string
+	AvatarBytes []byte
+}

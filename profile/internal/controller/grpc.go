@@ -14,6 +14,7 @@ import (
 
 type ProfileService interface {
 	GetProfileInfo(ctx context.Context, userID int) (domain.Profile, error)
+	UpdateProfile(ctx context.Context, userID int, dto domain.UpdateProfileDto) (domain.Profile, error)
 }
 
 type profileController struct {
@@ -40,6 +41,27 @@ func (c *profileController) GetProfile(ctx context.Context, req *pb.GetProfileRe
 	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get profile for user ID %d: %v", req.UserId, err)
+	}
+
+	return &pb.Profile{
+		UserId:   int64(profile.UserID),
+		Email:    profile.Email,
+		Provider: profile.Provider,
+		AvatarId: profile.AvatarID,
+		FullName: profile.FullName,
+	}, nil
+}
+
+func (c *profileController) UpdateProfile(ctx context.Context, req *pb.UpdateProfileRequest) (*pb.Profile, error) {
+	profile, err := c.svc.UpdateProfile(ctx, int(req.UserId), domain.UpdateProfileDto{
+		FullName:    req.FullName,
+		AvatarBytes: req.AvatarBytes,
+	})
+	if errors.Is(err, domain.ErrProfileNotFound) {
+		return nil, status.Errorf(codes.NotFound, "profile not found for user ID %d", req.UserId)
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update profile for user ID %d: %v", req.UserId, err)
 	}
 
 	return &pb.Profile{

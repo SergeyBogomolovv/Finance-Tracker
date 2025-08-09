@@ -5,12 +5,15 @@ import (
 	"FinanceTracker/profile/pkg/events"
 	"FinanceTracker/profile/pkg/logger"
 	"FinanceTracker/profile/pkg/transaction"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 )
+
+const defaultAvatarID = "default.jpg"
 
 type UserRepo interface {
 	GetProfileByID(ctx context.Context, userID int) (domain.Profile, error)
@@ -55,7 +58,7 @@ func (s *profileService) InitializeUserProfile(ctx context.Context, data events.
 		if data.AvatarURL != "" {
 			user.AvatarID = fmt.Sprintf("%d.jpg", data.UserID)
 		} else {
-			user.AvatarID = "default.jpg"
+			user.AvatarID = defaultAvatarID
 		}
 
 		// такой порядок чтобы если будет ошибка загрузки, просто отменилась транзакция и аватарка не была загружена
@@ -77,6 +80,38 @@ func (s *profileService) InitializeUserProfile(ctx context.Context, data events.
 		logger.Debug(ctx, "profile initialized", "user_id", data.UserID, "full_name", user.FullName, "avatar_id", user.AvatarID)
 		return nil
 	})
+}
+
+func (s *profileService) UpdateProfile(ctx context.Context, userID int, dto domain.UpdateProfileDto) (domain.Profile, error) {
+	profile, err := s.userRepo.GetProfileByID(ctx, userID)
+	if err != nil {
+		return domain.Profile{}, fmt.Errorf("failed to get profile: %w", err)
+	}
+	if dto.FullName != nil {
+		profile.FullName = *dto.FullName
+	}
+
+	if dto.AvatarBytes != nil {
+		profile.AvatarID = fmt.Sprintf("%d.jpg", userID)
+	}
+
+	err = s.txManager.Do(ctx, func(ctx context.Context) error {
+		if err := s.userRepo.Update(ctx, profile); err != nil {
+			return err
+		}
+
+		// если упадет загрузка, то транзакция отменится
+		if dto.AvatarBytes != nil {
+			if err := s.avatarRepo.Upload(ctx, profile.AvatarID, bytes.NewReader(dto.AvatarBytes)); err != nil {
+				return err
+			}
+		}
+
+		logger.Debug(ctx, "profile updated", "user_id", userID, "full_name", profile.FullName)
+		return nil
+	})
+
+	return profile, err
 }
 
 var adjectives = []string{
