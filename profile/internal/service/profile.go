@@ -19,7 +19,7 @@ type UserRepo interface {
 }
 
 type AvatarRepo interface {
-	Upload(ctx context.Context, userID int, data io.Reader) (string, error)
+	Create(userID int, data io.Reader) (domain.Avatar, error)
 }
 
 type profileService struct {
@@ -55,6 +55,7 @@ func (s *profileService) InitializeUserProfile(ctx context.Context, data events.
 			profile.FullName = generateRandomName()
 		}
 
+		var avatar domain.Avatar
 		if data.AvatarURL != "" {
 			// download avatar
 			resp, err := http.Get(data.AvatarURL)
@@ -63,15 +64,24 @@ func (s *profileService) InitializeUserProfile(ctx context.Context, data events.
 			}
 			defer resp.Body.Close()
 
-			avatarID, err := s.avatarRepo.Upload(ctx, profile.UserID, resp.Body)
+			// create avatar
+			avatar, err = s.avatarRepo.Create(profile.UserID, resp.Body)
 			if err != nil {
-				return fmt.Errorf("failed to upload avatar: %w", err)
+				return fmt.Errorf("failed to create avatar: %w", err)
 			}
-			profile.AvatarID = avatarID
+			profile.AvatarID = avatar.AvatarID()
 		}
 
+		// update db info before upload avatar
 		if err := s.userRepo.Update(ctx, profile); err != nil {
-			return fmt.Errorf("failed to update user: %w", err)
+			return fmt.Errorf("failed to update profile: %w", err)
+		}
+
+		// upload avatar
+		if avatar != nil {
+			if err := avatar.Upload(ctx); err != nil {
+				return fmt.Errorf("failed to upload avatar: %w", err)
+			}
 		}
 
 		logger.Debug(ctx, "profile initialized", "user_id", profile.UserID, "full_name", profile.FullName)
@@ -91,19 +101,27 @@ func (s *profileService) UpdateProfile(ctx context.Context, userID int, dto doma
 		profile.FullName = *dto.FullName
 	}
 
-	err = s.txManager.Do(ctx, func(ctx context.Context) error {
-		// update avatar
-		if len(dto.AvatarBytes) > 0 {
-			avatarID, err := s.avatarRepo.Upload(ctx, profile.UserID, bytes.NewReader(dto.AvatarBytes))
-			if err != nil {
-				return fmt.Errorf("failed to upload avatar: %w", err)
-			}
-			profile.AvatarID = avatarID
+	var avatar domain.Avatar
+	if len(dto.AvatarBytes) > 0 {
+		// create avatar
+		avatar, err = s.avatarRepo.Create(profile.UserID, bytes.NewReader(dto.AvatarBytes))
+		if err != nil {
+			return domain.Profile{}, fmt.Errorf("failed to create avatar: %w", err)
 		}
+		profile.AvatarID = avatar.AvatarID()
+	}
 
+	err = s.txManager.Do(ctx, func(ctx context.Context) error {
 		// update profile
 		if err := s.userRepo.Update(ctx, profile); err != nil {
 			return fmt.Errorf("failed to update user: %w", err)
+		}
+
+		// update avatar
+		if avatar != nil {
+			if err := avatar.Upload(ctx); err != nil {
+				return fmt.Errorf("failed to upload avatar: %w", err)
+			}
 		}
 
 		logger.Debug(ctx, "profile updated", "user_id", userID, "full_name", profile.FullName)

@@ -2,6 +2,7 @@ package repo
 
 import (
 	"FinanceTracker/profile/internal/config"
+	"FinanceTracker/profile/internal/domain"
 	"FinanceTracker/profile/pkg/logger"
 	"bytes"
 	"context"
@@ -11,9 +12,10 @@ import (
 	"io"
 	"os"
 
-	_ "golang.org/x/image/webp"
 	_ "image/gif"
 	_ "image/png"
+
+	_ "golang.org/x/image/webp"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConf "github.com/aws/aws-sdk-go-v2/config"
@@ -52,27 +54,46 @@ func MustAvatarRepo(ctx context.Context, conf config.S3) *avatarRepo {
 	}
 }
 
-func (r *avatarRepo) Upload(ctx context.Context, userID int, data io.Reader) (string, error) {
+type avatarUploader struct {
+	uploader *manager.Uploader
+	buf      bytes.Buffer
+	avatarID string
+	bucket   string
+}
+
+func (u *avatarUploader) AvatarID() string {
+	return u.avatarID
+}
+
+func (u *avatarUploader) Upload(ctx context.Context) error {
+	_, err := u.uploader.Upload(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(u.bucket),
+		Key:         aws.String(u.avatarID),
+		Body:        bytes.NewReader(u.buf.Bytes()),
+		ContentType: aws.String("image/jpeg"),
+	})
+	return err
+}
+
+func (r *avatarRepo) Create(userID int, data io.Reader) (domain.Avatar, error) {
 	img, _, err := image.Decode(data)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode image: %w", err)
+		return nil, fmt.Errorf("failed to decode image: %w", err)
 	}
 
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}); err != nil {
-		return "", fmt.Errorf("failed to encode image: %w", err)
+		return nil, fmt.Errorf("failed to encode image: %w", err)
 	}
 
 	avatarID := fmt.Sprintf("avatars/%d.jpg", userID)
 
-	_, err = r.uploader.Upload(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(r.bucket),
-		Key:         aws.String(avatarID),
-		Body:        bytes.NewReader(buf.Bytes()),
-		ContentType: aws.String("image/jpeg"),
-	})
-	if err != nil {
-		return "", err
+	u := &avatarUploader{
+		uploader: r.uploader,
+		bucket:   r.bucket,
+		avatarID: avatarID,
+		buf:      buf,
 	}
-	return avatarID, nil
+
+	return u, nil
 }

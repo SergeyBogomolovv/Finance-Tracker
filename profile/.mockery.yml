@@ -8,3 +8,6 @@ packages:
   FinanceTracker/profile/pkg/transaction:
     interfaces:
       Manager:
+  FinanceTracker/profile/internal/domain:
+    interfaces:
+      Avatar:

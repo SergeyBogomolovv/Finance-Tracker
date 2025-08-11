@@ -5,7 +5,7 @@
 package service
 
 import (
-	"context"
+	"FinanceTracker/profile/internal/domain"
 	"io"
 
 	mock "github.com/stretchr/testify/mock"
@@ -38,74 +38,70 @@ func (_m *MockAvatarRepo) EXPECT() *MockAvatarRepo_Expecter {
 	return &MockAvatarRepo_Expecter{mock: &_m.Mock}
 }
 
-// Upload provides a mock function for the type MockAvatarRepo
-func (_mock *MockAvatarRepo) Upload(ctx context.Context, userID int, data io.Reader) (string, error) {
-	ret := _mock.Called(ctx, userID, data)
+// Create provides a mock function for the type MockAvatarRepo
+func (_mock *MockAvatarRepo) Create(userID int, data io.Reader) (domain.Avatar, error) {
+	ret := _mock.Called(userID, data)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Upload")
+		panic("no return value specified for Create")
 	}
 
-	var r0 string
+	var r0 domain.Avatar
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, io.Reader) (string, error)); ok {
-		return returnFunc(ctx, userID, data)
+	if returnFunc, ok := ret.Get(0).(func(int, io.Reader) (domain.Avatar, error)); ok {
+		return returnFunc(userID, data)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, io.Reader) string); ok {
-		r0 = returnFunc(ctx, userID, data)
+	if returnFunc, ok := ret.Get(0).(func(int, io.Reader) domain.Avatar); ok {
+		r0 = returnFunc(userID, data)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(domain.Avatar)
+		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, int, io.Reader) error); ok {
-		r1 = returnFunc(ctx, userID, data)
+	if returnFunc, ok := ret.Get(1).(func(int, io.Reader) error); ok {
+		r1 = returnFunc(userID, data)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockAvatarRepo_Upload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Upload'
-type MockAvatarRepo_Upload_Call struct {
+// MockAvatarRepo_Create_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Create'
+type MockAvatarRepo_Create_Call struct {
 	*mock.Call
 }
 
-// Upload is a helper method to define mock.On call
-//   - ctx context.Context
+// Create is a helper method to define mock.On call
 //   - userID int
 //   - data io.Reader
-func (_e *MockAvatarRepo_Expecter) Upload(ctx interface{}, userID interface{}, data interface{}) *MockAvatarRepo_Upload_Call {
-	return &MockAvatarRepo_Upload_Call{Call: _e.mock.On("Upload", ctx, userID, data)}
+func (_e *MockAvatarRepo_Expecter) Create(userID interface{}, data interface{}) *MockAvatarRepo_Create_Call {
+	return &MockAvatarRepo_Create_Call{Call: _e.mock.On("Create", userID, data)}
 }
 
-func (_c *MockAvatarRepo_Upload_Call) Run(run func(ctx context.Context, userID int, data io.Reader)) *MockAvatarRepo_Upload_Call {
+func (_c *MockAvatarRepo_Create_Call) Run(run func(userID int, data io.Reader)) *MockAvatarRepo_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
+		var arg0 int
 		if args[0] != nil {
-			arg0 = args[0].(context.Context)
+			arg0 = args[0].(int)
 		}
-		var arg1 int
+		var arg1 io.Reader
 		if args[1] != nil {
-			arg1 = args[1].(int)
-		}
-		var arg2 io.Reader
-		if args[2] != nil {
-			arg2 = args[2].(io.Reader)
+			arg1 = args[1].(io.Reader)
 		}
 		run(
 			arg0,
 			arg1,
-			arg2,
 		)
 	})
 	return _c
 }
 
-func (_c *MockAvatarRepo_Upload_Call) Return(s string, err error) *MockAvatarRepo_Upload_Call {
-	_c.Call.Return(s, err)
+func (_c *MockAvatarRepo_Create_Call) Return(avatar domain.Avatar, err error) *MockAvatarRepo_Create_Call {
+	_c.Call.Return(avatar, err)
 	return _c
 }
 
-func (_c *MockAvatarRepo_Upload_Call) RunAndReturn(run func(ctx context.Context, userID int, data io.Reader) (string, error)) *MockAvatarRepo_Upload_Call {
+func (_c *MockAvatarRepo_Create_Call) RunAndReturn(run func(userID int, data io.Reader) (domain.Avatar, error)) *MockAvatarRepo_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
