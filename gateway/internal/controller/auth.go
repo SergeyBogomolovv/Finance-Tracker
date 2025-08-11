@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"FinanceTracker/gateway/internal/config"
+	"FinanceTracker/gateway/internal/middleware"
 	pb "FinanceTracker/gateway/pkg/api/auth"
-	"FinanceTracker/gateway/pkg/limiter"
 	"FinanceTracker/gateway/pkg/logger"
 	"FinanceTracker/gateway/pkg/utils"
 
@@ -52,17 +52,20 @@ func NewAuthController(authService pb.AuthServiceClient, oauthConf config.OAuth)
 }
 
 func (c *authController) Init(r *http.ServeMux) {
-	const emailRateLimit = 30 * time.Second
+	const (
+		emailRateLimit = 30 * time.Second
+		ipRateLimit    = 10 * time.Second
+	)
+
+	ipLimiter := middleware.NewIPLimiter(rate.Every(ipRateLimit), 10)
+	emailLimiter := middleware.NewBodyLimiter(rate.Every(emailRateLimit), 1, "email")
 
 	r.HandleFunc("/auth/google/login", c.handleGoogleLogin)
 	r.HandleFunc("/auth/google/callback", c.handleGoogleCallback)
 	r.HandleFunc("/auth/yandex/login", c.handleYandexLogin)
 	r.HandleFunc("/auth/yandex/callback", c.handleYandexCallback)
-	r.Handle(
-		"POST /auth/email",
-		limiter.New(rate.Every(emailRateLimit), 1).Wrap(http.HandlerFunc(c.handleEmailAuth)),
-	)
-	r.HandleFunc("POST /auth/email/verify", c.handleVerifyEmailOTP)
+	r.Handle("POST /auth/email", emailLimiter(http.HandlerFunc(c.handleEmailAuth)))
+	r.Handle("POST /auth/email/verify", ipLimiter(http.HandlerFunc(c.handleVerifyEmailOTP)))
 }
 
 // @Summary		Google OAuth вход
