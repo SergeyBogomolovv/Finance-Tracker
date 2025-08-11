@@ -1,11 +1,11 @@
 services:
   postgres:
     image: postgres
-    restart: always
+    container_name: postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - '5432:5432'
     volumes:
@@ -41,20 +41,21 @@ services:
     environment:
       DYNAMIC_CONFIG_ENABLED: true
 
-  s3:
+  minio:
     image: minio/minio
-    container_name: s3
+    container_name: minio
     ports:
       - 9000:9000
       - 9001:9001
     volumes:
-      - s3_data:/data
+      - minio_data:/data
     environment:
-      - MINIO_ROOT_USER=user
-      - MINIO_ROOT_PASSWORD=password
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_REGION_NAME=local
     command: server /data --console-address ":9001"
 
 volumes:
   postgres_data:
   kafka_data:
-  s3_data:
+  minio_data:

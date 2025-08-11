@@ -3,7 +3,6 @@ package service_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -45,7 +44,7 @@ func TestProfileService_InitializeUserProfile(t *testing.T) {
 					Return(domain.Profile{UserID: base.UserID}, nil)
 				users.EXPECT().
 					Update(mock.Anything, mock.MatchedBy(func(p domain.Profile) bool {
-						return p.UserID == base.UserID && p.FullName != "" && (p.AvatarID == "default.jpg" || p.AvatarID == "77.jpg")
+						return p.UserID == base.UserID && p.FullName == "John Doe"
 					})).
 					Return(nil)
 			},
@@ -64,8 +63,8 @@ func TestProfileService_InitializeUserProfile(t *testing.T) {
 					})).
 					Return(nil)
 				avatars.EXPECT().
-					Upload(mock.Anything, "77.jpg", mock.Anything).
-					Return(nil)
+					Upload(mock.Anything, base.UserID, mock.Anything).
+					Return("77.jpg", nil)
 			},
 			wantErr: nil,
 		},
@@ -99,9 +98,6 @@ func TestProfileService_InitializeUserProfile(t *testing.T) {
 				users.EXPECT().
 					GetProfileByID(mock.Anything, base.UserID).
 					Return(domain.Profile{UserID: base.UserID}, nil)
-				users.EXPECT().
-					Update(mock.Anything, mock.Anything).
-					Return(nil)
 			},
 			wantErrContains: "failed to download avatar",
 		},
@@ -112,12 +108,9 @@ func TestProfileService_InitializeUserProfile(t *testing.T) {
 				users.EXPECT().
 					GetProfileByID(mock.Anything, base.UserID).
 					Return(domain.Profile{UserID: base.UserID}, nil)
-				users.EXPECT().
-					Update(mock.Anything, mock.Anything).
-					Return(nil)
 				avatars.EXPECT().
-					Upload(mock.Anything, "77.jpg", mock.Anything).
-					Return(uploadErr)
+					Upload(mock.Anything, base.UserID, mock.Anything).
+					Return("", uploadErr)
 			},
 			wantErr: uploadErr,
 		},
@@ -212,12 +205,12 @@ func TestProfileService_UpdateProfile(t *testing.T) {
 					Return(baseProfile, nil)
 				users.EXPECT().
 					Update(mock.Anything, mock.MatchedBy(func(p domain.Profile) bool {
-						return p.UserID == userID && p.FullName == baseProfile.FullName && p.AvatarID == fmt.Sprintf("%d.jpg", userID)
+						return p.UserID == userID && p.FullName == baseProfile.FullName && p.AvatarID == "77.jpg"
 					})).
 					Return(nil)
 				avatars.EXPECT().
-					Upload(mock.Anything, fmt.Sprintf("%d.jpg", userID), mock.Anything).
-					Return(nil)
+					Upload(mock.Anything, userID, mock.Anything).
+					Return("77.jpg", nil)
 			},
 			expectTx: true,
 		},
@@ -230,12 +223,12 @@ func TestProfileService_UpdateProfile(t *testing.T) {
 					Return(baseProfile, nil)
 				users.EXPECT().
 					Update(mock.Anything, mock.MatchedBy(func(p domain.Profile) bool {
-						return p.UserID == userID && p.FullName == newName && p.AvatarID == fmt.Sprintf("%d.jpg", userID)
+						return p.UserID == userID && p.FullName == newName && p.AvatarID == "77.jpg"
 					})).
 					Return(nil)
 				avatars.EXPECT().
-					Upload(mock.Anything, fmt.Sprintf("%d.jpg", userID), mock.Anything).
-					Return(nil)
+					Upload(mock.Anything, userID, mock.Anything).
+					Return("77.jpg", nil)
 			},
 			expectTx: true,
 		},
@@ -286,12 +279,9 @@ func TestProfileService_UpdateProfile(t *testing.T) {
 				users.EXPECT().
 					GetProfileByID(mock.Anything, userID).
 					Return(baseProfile, nil)
-				users.EXPECT().
-					Update(mock.Anything, mock.Anything).
-					Return(nil)
 				avatars.EXPECT().
-					Upload(mock.Anything, fmt.Sprintf("%d.jpg", userID), mock.Anything).
-					Return(uploadErr)
+					Upload(mock.Anything, userID, mock.Anything).
+					Return("", uploadErr)
 			},
 			wantErr:  uploadErr,
 			expectTx: true,
@@ -336,7 +326,7 @@ func TestProfileService_UpdateProfile(t *testing.T) {
 				expected.FullName = *tc.dto.FullName
 			}
 			if tc.dto.AvatarBytes != nil {
-				expected.AvatarID = fmt.Sprintf("%d.jpg", userID)
+				expected.AvatarID = "77.jpg"
 			}
 			assert.Equal(t, expected, got)
 		})

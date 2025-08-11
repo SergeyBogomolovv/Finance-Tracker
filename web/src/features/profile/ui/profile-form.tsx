@@ -7,7 +7,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { addToast } from '@heroui/react'
 import { useRef, useState } from 'react'
 import { Profile } from '@/entities/profile'
-import { S3_BASE_URL } from '@/shared/constants'
+import { MEDIA_URL } from '@/shared/constants'
 import { Divider } from '@heroui/divider'
 import { updateProfile } from '../api/update-profile'
 import { useRouter } from 'next/navigation'
@@ -21,7 +21,7 @@ export function ProfileForm({ profile }: Props) {
   const router = useRouter()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [preview, setPreview] = useState(`${S3_BASE_URL}/avatars/${profile.avatar_id}`)
+  const [preview, setPreview] = useState(`${MEDIA_URL}/${profile.avatar_id}`)
 
   const providerLabelMap: Record<string, string> = {
     google: 'Google',

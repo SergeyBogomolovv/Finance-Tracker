@@ -3,6 +3,7 @@ package controller
 import (
 	"FinanceTracker/profile/internal/domain"
 	pb "FinanceTracker/profile/pkg/api/profile"
+	"FinanceTracker/profile/pkg/logger"
 	"context"
 	"errors"
 
@@ -61,7 +62,8 @@ func (c *profileController) UpdateProfile(ctx context.Context, req *pb.UpdatePro
 		return nil, status.Errorf(codes.NotFound, "profile not found for user ID %d", req.UserId)
 	}
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to update profile for user ID %d: %v", req.UserId, err)
+		logger.Error(ctx, "failed to update profile", "userID", req.UserId, "err", err)
+		return nil, status.Errorf(codes.Internal, "failed to update profile for user ID")
 	}
 
 	return &pb.Profile{

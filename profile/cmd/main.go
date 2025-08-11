@@ -10,13 +10,9 @@ import (
 	"FinanceTracker/profile/pkg/postgres"
 	"FinanceTracker/profile/pkg/transaction"
 	"context"
-	"os"
 	"os/signal"
 	"syscall"
 
-	awsConf "github.com/aws/aws-sdk-go-v2/config"
-
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/joho/godotenv"
 )
 
@@ -27,15 +23,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	awsCfg, err := awsConf.LoadDefaultConfig(ctx,
-		awsConf.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(conf.S3AccessKey, conf.S3SecretKey, "")),
-		awsConf.WithBaseEndpoint(conf.S3Endpoint),
-		awsConf.WithRegion(conf.S3Region),
-	)
-	if err != nil {
-		logger.Error("failed to load AWS config", "error", err)
-		os.Exit(1)
-	}
+	ctx = log.WithLogger(ctx, logger)
 
 	postgres := postgres.MustNew(conf.PostgresURL)
 	defer postgres.Close()
@@ -43,7 +31,7 @@ func main() {
 
 	txManager := transaction.NewManager(postgres)
 	userRepo := repo.NewUserRepo(postgres)
-	avatarRepo := repo.NewAvatarRepo(awsCfg)
+	avatarRepo := repo.MustAvatarRepo(ctx, conf.S3)
 
 	profileService := service.NewProfileService(userRepo, avatarRepo, txManager)
 	profileController := controller.NewProfileController(profileService)
@@ -53,10 +41,10 @@ func main() {
 	consumer := controller.NewEventsController(conf.KafkaBrokers, conf.KafkaGroupID, profileService)
 
 	app.Start(conf.Host, conf.Port)
-	go consumer.Consume(log.WithLogger(ctx, logger))
+	go consumer.Consume(ctx)
 	<-ctx.Done()
-	app.Stop()
 	consumer.Close()
+	app.Stop()
 }
 
 func init() {

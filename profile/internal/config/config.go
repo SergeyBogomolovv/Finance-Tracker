@@ -14,24 +14,32 @@ type Config struct {
 	KafkaBrokers []string
 	KafkaGroupID string
 
-	S3AccessKey string
-	S3SecretKey string
-	S3Endpoint  string
-	S3Region    string
+	S3 S3
 
 	PostgresURL string
 }
 
+type S3 struct {
+	AccessKey string
+	SecretKey string
+	Endpoint  string
+	Region    string
+	Bucket    string
+}
+
 func New() Config {
 	return Config{
-		Port:         envInt("PORT", 50052),
-		Host:         env("HOST", "localhost"),
-		Env:          env("ENV", "development"),
-		PostgresURL:  env("POSTGRES_URL"),
-		S3AccessKey:  env("S3_ACCESS_KEY"),
-		S3SecretKey:  env("S3_SECRET_KEY"),
-		S3Endpoint:   env("S3_ENDPOINT", "http://localhost:9000"),
-		S3Region:     env("S3_REGION", "local"),
+		Port:        envInt("PORT", 50052),
+		Host:        env("HOST", "localhost"),
+		Env:         env("ENV", "development"),
+		PostgresURL: env("POSTGRES_URL"),
+		S3: S3{
+			AccessKey: env("S3_ACCESS_KEY"),
+			SecretKey: env("S3_SECRET_KEY"),
+			Endpoint:  env("S3_ENDPOINT", "http://localhost:9000"),
+			Region:    env("S3_REGION", "local"),
+			Bucket:    env("S3_BUCKET", "finance-tracker"),
+		},
 		KafkaBrokers: envArray("KAFKA_BROKERS", "localhost:9092"),
 		KafkaGroupID: env("KAFKA_GROUP_ID", "profile-service"),
 	}

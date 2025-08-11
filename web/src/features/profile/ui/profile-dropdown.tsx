@@ -4,7 +4,7 @@ import { logout } from '@/features/auth'
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/dropdown'
 import { User } from '@heroui/user'
 import { useRouter } from 'next/navigation'
-import { S3_BASE_URL } from '@/shared/constants'
+import { MEDIA_URL } from '@/shared/constants'
 
 type Props = {
   profile: Profile
@@ -18,7 +18,7 @@ export function ProfileDropdown({ profile }: Props) {
         <User
           as='button'
           avatarProps={{
-            src: `${S3_BASE_URL}/avatars/${profile.avatar_id}`,
+            src: `${MEDIA_URL}/${profile.avatar_id}`,
           }}
           className='transition-transform cursor-pointer'
           classNames={{

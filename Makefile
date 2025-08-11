@@ -3,8 +3,11 @@ include .env
 
 MIGRATIONS_PATH ?= ./migrations
 POSTGRES_URL ?= $(POSTGRES_URL)
+MINIO_ROOT_USER ?= $(MINIO_ROOT_USER)
+MINIO_ROOT_PASSWORD ?= $(MINIO_ROOT_PASSWORD)
+MINIO_BUCKET = finance-tracker
 
-.PHONY: migrate-create migrate-up migrate-down proto-gen dev-up dev-down dev-restart
+.PHONY: migrate-create migrate-up migrate-down proto-gen dev-up dev-down dev-restart mc-setup
 
 # Миграции
 migrate-create:
@@ -39,3 +42,9 @@ dev-down:
 
 dev-restart:
 	docker compose -f docker-compose.dev.yml restart
+
+# Minio
+mc-setup:
+	mc alias set local http://localhost:9000 $(MINIO_ROOT_USER) $(MINIO_ROOT_PASSWORD)
+	mc mb --ignore-existing local/$(MINIO_BUCKET)
+	mc anonymous set download local/$(MINIO_BUCKET)

@@ -39,20 +39,29 @@ func (_m *MockAvatarRepo) EXPECT() *MockAvatarRepo_Expecter {
 }
 
 // Upload provides a mock function for the type MockAvatarRepo
-func (_mock *MockAvatarRepo) Upload(ctx context.Context, key string, data io.Reader) error {
-	ret := _mock.Called(ctx, key, data)
+func (_mock *MockAvatarRepo) Upload(ctx context.Context, userID int, data io.Reader) (string, error) {
+	ret := _mock.Called(ctx, userID, data)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Upload")
 	}
 
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, io.Reader) error); ok {
-		r0 = returnFunc(ctx, key, data)
-	} else {
-		r0 = ret.Error(0)
+	var r0 string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, io.Reader) (string, error)); ok {
+		return returnFunc(ctx, userID, data)
 	}
-	return r0
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, io.Reader) string); ok {
+		r0 = returnFunc(ctx, userID, data)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, io.Reader) error); ok {
+		r1 = returnFunc(ctx, userID, data)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockAvatarRepo_Upload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Upload'
@@ -62,21 +71,21 @@ type MockAvatarRepo_Upload_Call struct {
 
 // Upload is a helper method to define mock.On call
 //   - ctx context.Context
-//   - key string
+//   - userID int
 //   - data io.Reader
-func (_e *MockAvatarRepo_Expecter) Upload(ctx interface{}, key interface{}, data interface{}) *MockAvatarRepo_Upload_Call {
-	return &MockAvatarRepo_Upload_Call{Call: _e.mock.On("Upload", ctx, key, data)}
+func (_e *MockAvatarRepo_Expecter) Upload(ctx interface{}, userID interface{}, data interface{}) *MockAvatarRepo_Upload_Call {
+	return &MockAvatarRepo_Upload_Call{Call: _e.mock.On("Upload", ctx, userID, data)}
 }
 
-func (_c *MockAvatarRepo_Upload_Call) Run(run func(ctx context.Context, key string, data io.Reader)) *MockAvatarRepo_Upload_Call {
+func (_c *MockAvatarRepo_Upload_Call) Run(run func(ctx context.Context, userID int, data io.Reader)) *MockAvatarRepo_Upload_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 string
+		var arg1 int
 		if args[1] != nil {
-			arg1 = args[1].(string)
+			arg1 = args[1].(int)
 		}
 		var arg2 io.Reader
 		if args[2] != nil {
@@ -91,12 +100,12 @@ func (_c *MockAvatarRepo_Upload_Call) Run(run func(ctx context.Context, key stri
 	return _c
 }
 
-func (_c *MockAvatarRepo_Upload_Call) Return(err error) *MockAvatarRepo_Upload_Call {
-	_c.Call.Return(err)
+func (_c *MockAvatarRepo_Upload_Call) Return(s string, err error) *MockAvatarRepo_Upload_Call {
+	_c.Call.Return(s, err)
 	return _c
 }
 
-func (_c *MockAvatarRepo_Upload_Call) RunAndReturn(run func(ctx context.Context, key string, data io.Reader) error) *MockAvatarRepo_Upload_Call {
+func (_c *MockAvatarRepo_Upload_Call) RunAndReturn(run func(ctx context.Context, userID int, data io.Reader) (string, error)) *MockAvatarRepo_Upload_Call {
 	_c.Call.Return(run)
 	return _c
 }
